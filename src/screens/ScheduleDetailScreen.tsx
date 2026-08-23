@@ -161,11 +161,40 @@ export default function ScheduleDetailScreen() {
         <div className="section-title">파트별 참석 현황</div>
         {PARTS.map((part) => {
           const statusMap = partBreakdown.get(part)!;
+          const attendCount = statusMap.get("참석")?.length ?? 0;
+          const lateCount = statusMap.get("늦참")?.length ?? 0;
           return (
             <div key={part} className="part-card">
-              <div className="part-card-title">{part}</div>
+              <div className="part-card-head">
+                <span className="part-card-title">{part}</span>
+                <span className="part-card-total">참석+늦참 {attendCount + lateCount}명</span>
+              </div>
               {ATTENDANCE_STATUSES.map((status) => {
                 const names = statusMap.get(status) ?? [];
+                const alwaysShowNames = status === "참석" || status === "늦참";
+
+                if (alwaysShowNames) {
+                  return (
+                    <div key={status} className="part-status-inline">
+                      <div className="part-status-inline-head">
+                        <span className="part-status-label">{status}</span>
+                        <span className="part-status-count">{names.length}</span>
+                      </div>
+                      <div className="chip-row">
+                        {names.length === 0 ? (
+                          <span className="empty-text">없음</span>
+                        ) : (
+                          names.map((n) => (
+                            <span key={n} className="name-chip">
+                              {n}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 const key = `${part}__${status}`;
                 const isExpanded = expandedKey === key;
                 return (

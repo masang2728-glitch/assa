@@ -148,7 +148,23 @@ button, input, select, textarea { font-family: inherit; }
   padding: 14px 16px;
   margin-bottom: 12px;
 }
-.part-card-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+.part-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.part-card-title { font-size: 15px; font-weight: 800; }
+.part-card-total {
+  font-size: 12px;
+  font-weight: 800;
+  color: #3730a3;
+  background: #eef2ff;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.part-status-inline { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+.part-status-inline-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .part-status-row {
   display: flex;
   justify-content: space-between;
