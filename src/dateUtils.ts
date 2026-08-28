@@ -9,6 +9,15 @@ export function todayString(): string {
   return toDateString(new Date());
 }
 
+export function isScheduleEnded(schedule: { date: string; endTime: string }): boolean {
+  const today = todayString();
+  if (schedule.date < today) return true;
+  if (schedule.date > today) return false;
+  const now = new Date();
+  const nowHHMM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  return schedule.endTime < nowHHMM;
+}
+
 // 일요일 시작 (일, 월, 화, 수, 목, 금, 토 순)
 export function getMonthGrid(year: number, month1to12: number): (Date | null)[] {
   const first = new Date(year, month1to12 - 1, 1);

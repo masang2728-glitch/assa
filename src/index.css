@@ -1,9 +1,26 @@
+:root {
+  --bg: #f8fafc; --surface: #ffffff; --ink: #1e293b; --muted: #64748b; --faint: #94a3b8;
+  --border: #e2e8f0; --border-soft: #f1f5f9; --field-border: #cbd5e1; --accent: #3730a3; --accent-soft: #eef2ff;
+  --warn: #b45309; --warn-soft: #fffbeb; --warn-border: #fde68a;
+  --good: #15803d; --good-soft: #f0fdf4;
+  --bad: #b91c1c; --bad-soft: #fef2f2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220; --surface: #161f30; --ink: #eef2f8; --muted: #9aa8bd; --faint: #7686a0;
+    --border: #263248; --border-soft: #1c2637; --field-border: #354258; --accent: #7c6ff0; --accent-soft: #241f47;
+    --warn: #fbbf24; --warn-soft: #2b2107; --warn-border: #453309;
+    --good: #4ade80; --good-soft: #0f2417;
+    --bad: #f87171; --bad-soft: #2a1414;
+  }
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
   font-family: -apple-system, "Segoe UI", "Pretendard", "Malgun Gothic", system-ui, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
+  background: var(--bg);
+  color: var(--ink);
 }
 button, input, select, textarea { font-family: inherit; }
 
@@ -19,23 +36,25 @@ button, input, select, textarea { font-family: inherit; }
 .entry-card {
   width: 100%;
   max-width: 360px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 20px;
   padding: 32px 24px;
 }
-.entry-title { font-size: 28px; font-weight: 800; margin: 0 0 4px; text-align: center; color: #3730a3; }
-.entry-subtitle { font-size: 14px; color: #64748b; text-align: center; margin: 0 0 24px; }
+.entry-title { font-size: 28px; font-weight: 800; margin: 0 0 4px; text-align: center; color: var(--accent); }
+.entry-subtitle { font-size: 14px; color: var(--muted); text-align: center; margin: 0 0 24px; }
 .entry-input {
   width: 100%;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--field-border);
   border-radius: 12px;
   padding: 14px 16px;
   font-size: 15px;
   margin-top: 10px;
+  background: var(--surface);
+  color: var(--ink);
 }
 .entry-button {
   width: 100%;
-  background: #3730a3;
+  background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -51,7 +70,7 @@ button, input, select, textarea { font-family: inherit; }
   margin: 12px auto 0;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--faint);
   font-size: 13px;
   font-weight: 600;
   text-decoration: underline;
@@ -59,15 +78,16 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 /* ---------- Shared screen layout ---------- */
-.screen { min-height: 100vh; display: flex; flex-direction: column; background: #fff; }
+.screen { min-height: 100vh; display: flex; flex-direction: column; background: var(--surface); }
 .header {
   padding: 16px 20px;
   color: #fff;
-  background: #3730a3;
+  background: var(--accent);
 }
 .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .header-title { font-size: 22px; font-weight: 800; margin: 0; }
 .header-sub { font-size: 13px; color: #ffffffcc; margin-top: 4px; }
+.header-links { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
 .header-link {
   background: none;
   border: none;
@@ -80,24 +100,30 @@ button, input, select, textarea { font-family: inherit; }
 }
 .content { padding: 16px; padding-bottom: 40px; flex: 1; }
 
-.field-label { font-size: 14px; font-weight: 700; color: #334155; margin-top: 20px; margin-bottom: 8px; }
+.field-label { font-size: 14px; font-weight: 700; color: var(--muted); margin-top: 20px; margin-bottom: 8px; }
 .text-field {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
+  background: var(--surface);
+  color: var(--ink);
 }
 .section-title { font-size: 16px; font-weight: 800; margin: 24px 0 12px; }
-.empty-text { color: #94a3b8; font-size: 14px; }
+.section-title:first-child { margin-top: 0; }
+.section-title-row { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 12px; }
+.section-title-row .section-title { margin: 0; }
+.empty-text { color: var(--faint); font-size: 14px; }
+.refresh-link { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; }
 
 /* ---------- Calendar ---------- */
 .calendar { width: 100%; }
 .calendar-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px; }
-.calendar-nav { background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer; }
+.calendar-nav { background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
 .calendar-title { font-size: 17px; font-weight: 700; }
 .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 4px; }
-.calendar-weekday { text-align: center; font-size: 12px; font-weight: 600; color: #94a3b8; padding: 4px 0; }
+.calendar-weekday { text-align: center; font-size: 12px; font-weight: 600; color: var(--faint); padding: 4px 0; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 6px; }
 .calendar-cell { display: flex; flex-direction: column; align-items: center; min-height: 46px; }
 .calendar-day {
@@ -108,7 +134,7 @@ button, input, select, textarea { font-family: inherit; }
   background: none;
   font-size: 14px;
   cursor: pointer;
-  color: #1e293b;
+  color: var(--ink);
 }
 .calendar-day-today { font-weight: 800; }
 .calendar-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; }
@@ -119,13 +145,13 @@ button, input, select, textarea { font-family: inherit; }
   flex-direction: column;
   gap: 2px;
   padding: 12px 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 12px;
   margin-bottom: 10px;
   cursor: pointer;
 }
-.schedule-row-title { font-size: 15px; font-weight: 800; color: #1e293b; }
-.schedule-row-meta { font-size: 12.5px; color: #64748b; }
+.schedule-row-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+.schedule-row-meta { font-size: 12.5px; color: var(--muted); }
 
 /* ---------- Status chips ---------- */
 .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
@@ -133,17 +159,36 @@ button, input, select, textarea { font-family: inherit; }
 .status-chip {
   padding: 14px;
   border-radius: 12px;
-  border: 1.5px solid #cbd5e1;
-  background: #fff;
+  border: 1.5px solid var(--field-border);
+  background: var(--surface);
   font-size: 15px;
   font-weight: 700;
-  color: #334155;
+  color: var(--ink);
   cursor: pointer;
 }
 
-/* ---------- Part attendance summary ---------- */
+/* ---------- Attendance dashboard summary ---------- */
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.summary-card { border-radius: 12px; padding: 12px 4px; text-align: center; background: var(--bg); border: 1px solid var(--border); }
+.summary-card .n { font-size: 20px; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.summary-card .l { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 4px; }
+.summary-card.attend { background: var(--good-soft); border-color: transparent; }
+.summary-card.attend .n { color: var(--good); }
+.summary-card.pending { background: var(--warn-soft); border-color: var(--warn-border); }
+.summary-card.pending .n { color: var(--warn); }
+.summary-card.absent { background: var(--bad-soft); border-color: transparent; }
+.summary-card.absent .n { color: var(--bad); }
+
+.followup-box { background: var(--warn-soft); border: 1px solid var(--warn-border); border-radius: 14px; padding: 14px 16px; margin-top: 16px; }
+.followup-head { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--warn); margin-bottom: 10px; }
+.followup-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 12.5px; gap: 8px; }
+.followup-row:last-child { margin-bottom: 0; }
+.followup-part { font-weight: 800; color: var(--ink); flex-shrink: 0; }
+.followup-names { color: var(--warn); font-weight: 700; text-align: right; }
+
+/* ---------- Part attendance detail ---------- */
 .part-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -158,19 +203,19 @@ button, input, select, textarea { font-family: inherit; }
 .part-card-total {
   font-size: 12px;
   font-weight: 800;
-  color: #3730a3;
-  background: #eef2ff;
+  color: var(--accent);
+  background: var(--accent-soft);
   padding: 3px 10px;
   border-radius: 999px;
 }
-.part-status-inline { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+.part-status-inline { padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
 .part-status-inline-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .part-status-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-soft);
   background: none;
   border-left: none;
   border-right: none;
@@ -179,21 +224,41 @@ button, input, select, textarea { font-family: inherit; }
   cursor: pointer;
   font: inherit;
   text-align: left;
+  color: inherit;
 }
 .part-status-row:last-child { border-bottom: none; }
-.part-status-label { font-size: 13.5px; color: #475569; font-weight: 600; }
-.part-status-count { font-size: 14px; font-weight: 800; color: #1e293b; }
+.part-status-label { font-size: 13.5px; color: var(--muted); font-weight: 600; }
+.part-status-count { font-size: 14px; font-weight: 800; color: var(--ink); }
 
 .name-chip {
   font-size: 13px;
   font-weight: 700;
   padding: 6px 12px;
   border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #1e293b;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
 }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* ---------- Member roster ---------- */
+.member-part-group { margin-bottom: 20px; }
+.member-part-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.member-part-title { font-size: 14.5px; font-weight: 800; }
+.member-part-count { font-size: 11.5px; font-weight: 800; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 9px; border-radius: 999px; }
+.member-chip-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.member-chip {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 13px;
+  border-radius: 13px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+}
+.member-chip.novote { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+button.member-chip { cursor: pointer; }
+button.member-chip:active { opacity: 0.7; }
 
 .submit-button {
   width: 100%;
@@ -203,11 +268,24 @@ button, input, select, textarea { font-family: inherit; }
   font-size: 16px;
   font-weight: 700;
   color: #fff;
-  background: #3730a3;
+  background: var(--accent);
   cursor: pointer;
   margin-top: 20px;
 }
 .submit-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.danger-link {
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  margin-top: 16px;
+  background: none;
+  border: none;
+  color: var(--bad);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
 
 /* ---------- Modal ---------- */
 .modal-backdrop {
@@ -220,7 +298,7 @@ button, input, select, textarea { font-family: inherit; }
   z-index: 20;
 }
 .modal-card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 16px 16px 0 0;
   padding: 20px;
   width: 100%;
@@ -228,7 +306,21 @@ button, input, select, textarea { font-family: inherit; }
   max-height: 85vh;
   overflow-y: auto;
 }
-.modal-title { font-size: 16px; font-weight: 800; margin: 0 0 16px; }
+.modal-title { font-size: 16px; font-weight: 800; margin: 0 0 8px; color: var(--ink); }
+.modal-desc { font-size: 13.5px; color: var(--muted); margin: 0 0 16px; line-height: 1.5; }
+.modal-danger-button {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bad);
+  cursor: pointer;
+  margin-top: 4px;
+}
+.modal-danger-button:disabled { opacity: 0.6; cursor: not-allowed; }
 .modal-cancel {
   width: 100%;
   text-align: center;
@@ -236,7 +328,7 @@ button, input, select, textarea { font-family: inherit; }
   margin-top: 8px;
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--muted);
   font-weight: 700;
   cursor: pointer;
 }

@@ -4,6 +4,7 @@ import { SessionProvider, useSession } from "./session/SessionContext";
 import NameEntryScreen from "./screens/NameEntryScreen";
 import CalendarScreen from "./screens/CalendarScreen";
 import ScheduleDetailScreen from "./screens/ScheduleDetailScreen";
+import MembersScreen from "./screens/MembersScreen";
 
 function RequireSession({ children }: { children: React.ReactNode }) {
   const { name, part, isLoading } = useSession();
@@ -38,6 +39,14 @@ function App() {
             element={
               <RequireSession>
                 <ScheduleDetailScreen />
+              </RequireSession>
+            }
+          />
+          <Route
+            path="/members"
+            element={
+              <RequireSession>
+                <MembersScreen />
               </RequireSession>
             }
           />

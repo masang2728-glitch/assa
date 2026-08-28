@@ -6,13 +6,14 @@ import { subscribeToSchedules, deleteSchedule } from "../api/schedules";
 import { subscribeToAttendance, setAttendance } from "../api/attendance";
 import { subscribeToMembers } from "../api/members";
 import type { Schedule, AttendanceRecord, Member } from "../types";
-import { ATTENDANCE_STATUSES, PARTS, type AttendanceStatus } from "../constants";
+import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, type AttendanceStatus } from "../constants";
 
 const THEME_COLOR = "#3730A3";
 
 export default function ScheduleDetailScreen() {
   const { scheduleId } = useParams<{ scheduleId: string }>();
-  const { name, isAdmin } = useSession();
+  const { name, part, isAdmin } = useSession();
+  const isVotingPart = !!part && !(NON_VOTING_PARTS as readonly string[]).includes(part);
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -61,6 +62,27 @@ export default function ScheduleDetailScreen() {
     }
     return map;
   }, [members, statusByName]);
+
+  const overallCounts = useMemo(() => {
+    const counts = { attend: 0, pending: 0, absent: 0, online: 0 };
+    for (const m of members) {
+      const status = statusByName.get(m.name) ?? "미정";
+      if (status === "참석" || status === "늦참") counts.attend += 1;
+      else if (status === "불참") counts.absent += 1;
+      else if (status === "온라인") counts.online += 1;
+      else counts.pending += 1;
+    }
+    return counts;
+  }, [members, statusByName]);
+
+  const pendingByPart = useMemo(() => {
+    const groups: { part: string; names: string[] }[] = [];
+    for (const part of PARTS) {
+      const names = partBreakdown.get(part)?.get("미정") ?? [];
+      if (names.length > 0) groups.push({ part, names });
+    }
+    return groups;
+  }, [partBreakdown]);
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!scheduleId || !name) return;
@@ -136,27 +158,63 @@ export default function ScheduleDetailScreen() {
           </>
         )}
 
-        <div className="section-title">
-          나의 참석 여부{myRecord ? ` · 현재: ${myRecord.status}` : ""}
+        {isVotingPart && (
+          <>
+            <div className="section-title">
+              나의 참석 여부{myRecord ? ` · 현재: ${myRecord.status}` : ""}
+            </div>
+            <div className="status-grid">
+              {ATTENDANCE_STATUSES.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  className="status-chip"
+                  style={
+                    myRecord?.status === status
+                      ? { backgroundColor: THEME_COLOR, borderColor: THEME_COLOR, color: "#fff" }
+                      : undefined
+                  }
+                  disabled={saving}
+                  onClick={() => handleSelectStatus(status)}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="section-title">출석 현황</div>
+        <div className="summary-grid">
+          <div className="summary-card attend">
+            <div className="n">{overallCounts.attend}</div>
+            <div className="l">참석·늦참</div>
+          </div>
+          <div className="summary-card pending">
+            <div className="n">{overallCounts.pending}</div>
+            <div className="l">미응답</div>
+          </div>
+          <div className="summary-card absent">
+            <div className="n">{overallCounts.absent}</div>
+            <div className="l">불참</div>
+          </div>
+          <div className="summary-card">
+            <div className="n">{overallCounts.online}</div>
+            <div className="l">온라인</div>
+          </div>
         </div>
-        <div className="status-grid">
-          {ATTENDANCE_STATUSES.map((status) => (
-            <button
-              key={status}
-              type="button"
-              className="status-chip"
-              style={
-                myRecord?.status === status
-                  ? { backgroundColor: THEME_COLOR, borderColor: THEME_COLOR, color: "#fff" }
-                  : undefined
-              }
-              disabled={saving}
-              onClick={() => handleSelectStatus(status)}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
+
+        {isVotingPart && pendingByPart.length > 0 && (
+          <div className="followup-box">
+            <div className="followup-head">⏳ 지금 확인이 필요해요 ({overallCounts.pending}명)</div>
+            {pendingByPart.map((g) => (
+              <div key={g.part} className="followup-row">
+                <span className="followup-part">{g.part}</span>
+                <span className="followup-names">{g.names.join(", ")}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="section-title">파트별 참석 현황</div>
         {PARTS.map((part) => {
@@ -228,12 +286,7 @@ export default function ScheduleDetailScreen() {
         })}
 
         {isAdmin && (
-          <button
-            type="button"
-            className="modal-cancel"
-            style={{ color: "#ef4444" }}
-            onClick={handleDeleteSchedule}
-          >
+          <button type="button" className="danger-link" onClick={handleDeleteSchedule}>
             일정 삭제
           </button>
         )}

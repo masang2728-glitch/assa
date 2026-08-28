@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToSchedules, createSchedule } from "../api/schedules";
 import type { Schedule } from "../types";
-import { todayString } from "../dateUtils";
+import { isScheduleEnded, todayString } from "../dateUtils";
 import MonthCalendar from "../components/MonthCalendar";
 
 const THEME_COLOR = "#3730A3";
@@ -25,7 +25,10 @@ export default function CalendarScreen() {
   const scheduleDates = useMemo(() => new Set(schedules.map((s) => s.date)), [schedules]);
 
   const monthlySchedules = useMemo(
-    () => schedules.filter((s) => s.date.startsWith(month)).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    () =>
+      schedules
+        .filter((s) => s.date.startsWith(month) && !isScheduleEnded(s))
+        .sort((a, b) => (a.date < b.date ? -1 : 1)),
     [schedules, month]
   );
 
@@ -35,11 +38,7 @@ export default function CalendarScreen() {
   );
 
   const handleDayClick = (dateString: string) => {
-    setSelectedDate(dateString);
-    const daySchedules = schedules.filter((s) => s.date === dateString);
-    if (daySchedules.length === 1) {
-      navigate(`/schedule/${daySchedules[0].id}`);
-    }
+    setSelectedDate((prev) => (prev === dateString ? null : dateString));
   };
 
   const handleLogout = () => {
@@ -58,9 +57,14 @@ export default function CalendarScreen() {
               {isAdmin ? " · 관리자" : ""}
             </div>
           </div>
-          <button type="button" className="header-link" onClick={handleLogout}>
-            다른 이름으로 전환
-          </button>
+          <div className="header-links">
+            <button type="button" className="header-link" onClick={() => navigate("/members")}>
+              멤버 현황
+            </button>
+            <button type="button" className="header-link" onClick={handleLogout}>
+              다른 이름으로 전환
+            </button>
+          </div>
         </div>
       </div>
 
@@ -85,17 +89,21 @@ export default function CalendarScreen() {
           </button>
         )}
 
-        {selectedDate && selectedSchedules.length > 1 && (
+        {selectedDate && (
           <>
             <div className="section-title">{selectedDate} 일정</div>
-            {selectedSchedules.map((s) => (
-              <div key={s.id} className="schedule-row" onClick={() => navigate(`/schedule/${s.id}`)}>
-                <span className="schedule-row-title">{s.title}</span>
-                <span className="schedule-row-meta">
-                  {s.startTime} ~ {s.endTime} · {s.place}
-                </span>
-              </div>
-            ))}
+            {selectedSchedules.length === 0 ? (
+              <p className="empty-text">등록된 일정이 없습니다.</p>
+            ) : (
+              selectedSchedules.map((s) => (
+                <div key={s.id} className="schedule-row" onClick={() => navigate(`/schedule/${s.id}`)}>
+                  <span className="schedule-row-title">{s.title}</span>
+                  <span className="schedule-row-meta">
+                    {s.startTime} ~ {s.endTime} · {s.place}
+                  </span>
+                </div>
+              ))
+            )}
           </>
         )}
 

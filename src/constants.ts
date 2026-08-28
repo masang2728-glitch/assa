@@ -4,5 +4,8 @@ export const ADMIN_PIN = "0000";
 export const PARTS = ["소프라노", "알토", "테너", "베이스", "지휘자", "반주자"] as const;
 export type Part = (typeof PARTS)[number];
 
+export const VOICE_PARTS = ["소프라노", "알토", "테너", "베이스"] as const;
+export const NON_VOTING_PARTS = ["지휘자", "반주자"] as const;
+
 export const ATTENDANCE_STATUSES = ["참석", "늦참", "불참", "온라인", "미정"] as const;
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
