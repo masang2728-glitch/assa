@@ -169,7 +169,10 @@ button, input, select, textarea { font-family: inherit; }
 
 /* ---------- Attendance dashboard summary ---------- */
 .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.summary-card { border-radius: 12px; padding: 12px 4px; text-align: center; background: var(--bg); border: 1px solid var(--border); }
+.summary-card {
+  border-radius: 12px; padding: 12px 4px; text-align: center; background: var(--bg); border: 1px solid var(--border);
+  font: inherit; cursor: pointer; width: 100%;
+}
 .summary-card .n { font-size: 20px; font-weight: 800; line-height: 1.1; color: var(--ink); }
 .summary-card .l { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 4px; }
 .summary-card.attend { background: var(--good-soft); border-color: transparent; }
@@ -179,12 +182,8 @@ button, input, select, textarea { font-family: inherit; }
 .summary-card.absent { background: var(--bad-soft); border-color: transparent; }
 .summary-card.absent .n { color: var(--bad); }
 
-.followup-box { background: var(--warn-soft); border: 1px solid var(--warn-border); border-radius: 14px; padding: 14px 16px; margin-top: 16px; }
-.followup-head { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--warn); margin-bottom: 10px; }
-.followup-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 12.5px; gap: 8px; }
-.followup-row:last-child { margin-bottom: 0; }
-.followup-part { font-weight: 800; color: var(--ink); flex-shrink: 0; }
-.followup-names { color: var(--warn); font-weight: 700; text-align: right; }
+.summary-detail-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-top: 12px; }
+.summary-detail-head { font-size: 13px; font-weight: 800; color: var(--ink); }
 
 /* ---------- Part attendance detail ---------- */
 .part-card {

@@ -10,6 +10,14 @@ import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, type AttendanceStatus } f
 
 const THEME_COLOR = "#3730A3";
 
+type SummaryKey = "attend" | "pending" | "absent" | "online";
+const SUMMARY_LABELS: Record<SummaryKey, string> = {
+  attend: "참석·늦참",
+  pending: "미응답",
+  absent: "불참",
+  online: "온라인",
+};
+
 export default function ScheduleDetailScreen() {
   const { scheduleId } = useParams<{ scheduleId: string }>();
   const { name, part, isAdmin } = useSession();
@@ -20,6 +28,7 @@ export default function ScheduleDetailScreen() {
   const [members, setMembers] = useState<Member[]>([]);
   const [saving, setSaving] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null); // `${part}__${status}`
+  const [expandedSummary, setExpandedSummary] = useState<SummaryKey | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToSchedules(setSchedules, () => toast.error("일정을 불러오지 못했습니다."));
@@ -63,26 +72,22 @@ export default function ScheduleDetailScreen() {
     return map;
   }, [members, statusByName]);
 
-  const overallCounts = useMemo(() => {
-    const counts = { attend: 0, pending: 0, absent: 0, online: 0 };
+  const summaryGroups = useMemo(() => {
+    const groups: Record<"attend" | "pending" | "absent" | "online", string[]> = {
+      attend: [],
+      pending: [],
+      absent: [],
+      online: [],
+    };
     for (const m of members) {
       const status = statusByName.get(m.name) ?? "미정";
-      if (status === "참석" || status === "늦참") counts.attend += 1;
-      else if (status === "불참") counts.absent += 1;
-      else if (status === "온라인") counts.online += 1;
-      else counts.pending += 1;
-    }
-    return counts;
-  }, [members, statusByName]);
-
-  const pendingByPart = useMemo(() => {
-    const groups: { part: string; names: string[] }[] = [];
-    for (const part of PARTS) {
-      const names = partBreakdown.get(part)?.get("미정") ?? [];
-      if (names.length > 0) groups.push({ part, names });
+      if (status === "참석" || status === "늦참") groups.attend.push(m.name);
+      else if (status === "불참") groups.absent.push(m.name);
+      else if (status === "온라인") groups.online.push(m.name);
+      else groups.pending.push(m.name);
     }
     return groups;
-  }, [partBreakdown]);
+  }, [members, statusByName]);
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!scheduleId || !name) return;
@@ -186,33 +191,35 @@ export default function ScheduleDetailScreen() {
 
         <div className="section-title">출석 현황</div>
         <div className="summary-grid">
-          <div className="summary-card attend">
-            <div className="n">{overallCounts.attend}</div>
-            <div className="l">참석·늦참</div>
-          </div>
-          <div className="summary-card pending">
-            <div className="n">{overallCounts.pending}</div>
-            <div className="l">미응답</div>
-          </div>
-          <div className="summary-card absent">
-            <div className="n">{overallCounts.absent}</div>
-            <div className="l">불참</div>
-          </div>
-          <div className="summary-card">
-            <div className="n">{overallCounts.online}</div>
-            <div className="l">온라인</div>
-          </div>
+          {(Object.keys(SUMMARY_LABELS) as SummaryKey[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={"summary-card" + (key !== "online" ? ` ${key}` : "")}
+              onClick={() => setExpandedSummary(expandedSummary === key ? null : key)}
+            >
+              <div className="n">{summaryGroups[key].length}</div>
+              <div className="l">{SUMMARY_LABELS[key]}</div>
+            </button>
+          ))}
         </div>
 
-        {isVotingPart && pendingByPart.length > 0 && (
-          <div className="followup-box">
-            <div className="followup-head">⏳ 지금 확인이 필요해요 ({overallCounts.pending}명)</div>
-            {pendingByPart.map((g) => (
-              <div key={g.part} className="followup-row">
-                <span className="followup-part">{g.part}</span>
-                <span className="followup-names">{g.names.join(", ")}</span>
-              </div>
-            ))}
+        {expandedSummary && (
+          <div className="summary-detail-box">
+            <div className="summary-detail-head">
+              {SUMMARY_LABELS[expandedSummary]} 명단 ({summaryGroups[expandedSummary].length}명)
+            </div>
+            <div className="chip-row">
+              {summaryGroups[expandedSummary].length === 0 ? (
+                <span className="empty-text">없음</span>
+              ) : (
+                summaryGroups[expandedSummary].map((n) => (
+                  <span key={n} className="name-chip">
+                    {n}
+                  </span>
+                ))
+              )}
+            </div>
           </div>
         )}
 
