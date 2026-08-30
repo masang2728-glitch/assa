@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
-import { subscribeToSchedules, createSchedule } from "../api/schedules";
+import { subscribeToSchedules } from "../api/schedules";
 import type { Schedule } from "../types";
 import { isScheduleEnded, todayString } from "../dateUtils";
 import MonthCalendar from "../components/MonthCalendar";
+import ScheduleFormModal from "../components/ScheduleFormModal";
 
 const THEME_COLOR = "#3730A3";
 
@@ -125,84 +126,11 @@ export default function CalendarScreen() {
       </div>
 
       {showAddModal && (
-        <AddScheduleModal
+        <ScheduleFormModal
           defaultDate={selectedDate ?? todayString()}
           onClose={() => setShowAddModal(false)}
         />
       )}
-    </div>
-  );
-}
-
-function AddScheduleModal({ defaultDate, onClose }: { defaultDate: string; onClose: () => void }) {
-  const [date, setDate] = useState(defaultDate);
-  const [title, setTitle] = useState("");
-  const [startTime, setStartTime] = useState("19:00");
-  const [endTime, setEndTime] = useState("21:00");
-  const [place, setPlace] = useState("");
-  const [description, setDescription] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    if (!date || !title.trim() || !startTime || !endTime || !place.trim()) {
-      toast.error("일정명, 날짜, 시간, 장소를 모두 입력해주세요.");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await createSchedule({ date, title: title.trim(), startTime, endTime, place: place.trim(), description });
-      toast.success("일정이 등록되었습니다.");
-      onClose();
-    } catch {
-      toast.error("등록 중 오류가 발생했습니다.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">새 일정 등록</div>
-
-        <div className="field-label" style={{ marginTop: 0 }}>
-          일정명
-        </div>
-        <input className="text-field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 정기연습" />
-
-        <div className="field-label">날짜</div>
-        <input className="text-field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-
-        <div className="field-label">시간</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            className="text-field"
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-          />
-          <span>~</span>
-          <input className="text-field" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-        </div>
-
-        <div className="field-label">장소</div>
-        <input
-          className="text-field"
-          value={place}
-          onChange={(e) => setPlace(e.target.value)}
-          placeholder="예: 창원근로자회관"
-        />
-
-        <div className="field-label">설명 (선택)</div>
-        <input className="text-field" value={description} onChange={(e) => setDescription(e.target.value)} />
-
-        <button type="button" className="submit-button" onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "등록 중..." : "일정 등록"}
-        </button>
-        <button type="button" className="modal-cancel" onClick={onClose}>
-          닫기
-        </button>
-      </div>
     </div>
   );
 }

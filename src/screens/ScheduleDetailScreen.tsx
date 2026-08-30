@@ -5,8 +5,11 @@ import { useSession } from "../session/SessionContext";
 import { subscribeToSchedules, deleteSchedule } from "../api/schedules";
 import { subscribeToAttendance, setAttendance } from "../api/attendance";
 import { subscribeToMembers } from "../api/members";
+import ScheduleFormModal from "../components/ScheduleFormModal";
 import type { Schedule, AttendanceRecord, Member } from "../types";
 import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, type AttendanceStatus } from "../constants";
+
+const PART_ORDER = new Map(PARTS.map((p, i) => [p, i]));
 
 const THEME_COLOR = "#3730A3";
 
@@ -29,6 +32,7 @@ export default function ScheduleDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null); // `${part}__${status}`
   const [expandedSummary, setExpandedSummary] = useState<SummaryKey | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToSchedules(setSchedules, () => toast.error("일정을 불러오지 못했습니다."));
@@ -58,6 +62,17 @@ export default function ScheduleDetailScreen() {
     return map;
   }, [records]);
 
+  // members loaded from Supabase come back sorted alphabetically by part, which does not
+  // match the choir's logical part order (소프라노·알토·테너·베이스·지휘자·반주자) — resort here.
+  const orderedMembers = useMemo(
+    () =>
+      [...members].sort((a, b) => {
+        const partDiff = (PART_ORDER.get(a.part) ?? 0) - (PART_ORDER.get(b.part) ?? 0);
+        return partDiff !== 0 ? partDiff : a.name.localeCompare(b.name, "ko");
+      }),
+    [members]
+  );
+
   const partBreakdown = useMemo(() => {
     const map = new Map<string, Map<AttendanceStatus, string[]>>();
     for (const part of PARTS) {
@@ -65,12 +80,12 @@ export default function ScheduleDetailScreen() {
       for (const status of ATTENDANCE_STATUSES) statusMap.set(status, []);
       map.set(part, statusMap);
     }
-    for (const m of members) {
+    for (const m of orderedMembers) {
       const status = statusByName.get(m.name) ?? "미정";
       map.get(m.part)?.get(status)?.push(m.name);
     }
     return map;
-  }, [members, statusByName]);
+  }, [orderedMembers, statusByName]);
 
   const summaryGroups = useMemo(() => {
     const groups: Record<"attend" | "pending" | "absent" | "online", string[]> = {
@@ -79,7 +94,7 @@ export default function ScheduleDetailScreen() {
       absent: [],
       online: [],
     };
-    for (const m of members) {
+    for (const m of orderedMembers) {
       const status = statusByName.get(m.name) ?? "미정";
       if (status === "참석" || status === "늦참") groups.attend.push(m.name);
       else if (status === "불참") groups.absent.push(m.name);
@@ -87,7 +102,7 @@ export default function ScheduleDetailScreen() {
       else groups.pending.push(m.name);
     }
     return groups;
-  }, [members, statusByName]);
+  }, [orderedMembers, statusByName]);
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!scheduleId || !name) return;
@@ -293,11 +308,24 @@ export default function ScheduleDetailScreen() {
         })}
 
         {isAdmin && (
-          <button type="button" className="danger-link" onClick={handleDeleteSchedule}>
-            일정 삭제
-          </button>
+          <div className="action-link-row" style={{ marginTop: 16 }}>
+            <button type="button" className="edit-link" onClick={() => setShowEditModal(true)}>
+              일정 수정
+            </button>
+            <button type="button" className="danger-link" onClick={handleDeleteSchedule}>
+              일정 삭제
+            </button>
+          </div>
         )}
       </div>
+
+      {showEditModal && (
+        <ScheduleFormModal
+          defaultDate={schedule.date}
+          schedule={schedule}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
     </div>
   );
 }

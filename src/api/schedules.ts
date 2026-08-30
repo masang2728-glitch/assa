@@ -64,6 +64,23 @@ export async function createSchedule(input: CreateScheduleInput) {
   if (error) throw error;
 }
 
+export type UpdateScheduleInput = CreateScheduleInput;
+
+export async function updateSchedule(id: string, input: UpdateScheduleInput) {
+  const { error } = await supabase
+    .from("schedules")
+    .update({
+      date: input.date,
+      title: input.title,
+      start_time: input.startTime,
+      end_time: input.endTime,
+      place: input.place,
+      description: input.description?.trim() || null,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteSchedule(id: string) {
   const { error } = await supabase.from("schedules").delete().eq("id", id);
   if (error) throw error;
