@@ -7,7 +7,7 @@ import { subscribeToAttendance, setAttendance } from "../api/attendance";
 import { subscribeToMembers } from "../api/members";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 import type { Schedule, AttendanceRecord, Member } from "../types";
-import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, type AttendanceStatus } from "../constants";
+import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, VOICE_PARTS, type AttendanceStatus } from "../constants";
 
 const PART_ORDER = new Map(PARTS.map((p, i) => [p, i]));
 
@@ -239,7 +239,7 @@ export default function ScheduleDetailScreen() {
         )}
 
         <div className="section-title">파트별 참석 현황</div>
-        {PARTS.map((part) => {
+        {VOICE_PARTS.map((part) => {
           const statusMap = partBreakdown.get(part)!;
           const attendCount = statusMap.get("참석")?.length ?? 0;
           const lateCount = statusMap.get("늦참")?.length ?? 0;
