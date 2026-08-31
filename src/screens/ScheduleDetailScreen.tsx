@@ -104,6 +104,32 @@ export default function ScheduleDetailScreen() {
     return groups;
   }, [orderedMembers, statusByName]);
 
+  // 출석현황 명단을 펼쳤을 때 파트별로 묶어서 보여주기 위한 구성. orderedMembers가 이미
+  // 파트 순서로 정렬돼 있으니, PARTS 순서대로 순회하며 채우면 그대로 파트 순서가 유지된다.
+  const summaryGroupsByPart = useMemo(() => {
+    const groups: Record<SummaryKey, Map<string, string[]>> = {
+      attend: new Map(),
+      pending: new Map(),
+      absent: new Map(),
+      online: new Map(),
+    };
+    for (const m of orderedMembers) {
+      const status = statusByName.get(m.name) ?? "미정";
+      const key: SummaryKey =
+        status === "참석" || status === "늦참"
+          ? "attend"
+          : status === "불참"
+            ? "absent"
+            : status === "온라인"
+              ? "online"
+              : "pending";
+      const map = groups[key];
+      if (!map.has(m.part)) map.set(m.part, []);
+      map.get(m.part)!.push(m.name);
+    }
+    return groups;
+  }, [orderedMembers, statusByName]);
+
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!scheduleId || !name) return;
     setSaving(true);
@@ -224,17 +250,30 @@ export default function ScheduleDetailScreen() {
             <div className="summary-detail-head">
               {SUMMARY_LABELS[expandedSummary]} 명단 ({summaryGroups[expandedSummary].length}명)
             </div>
-            <div className="chip-row">
-              {summaryGroups[expandedSummary].length === 0 ? (
+            {summaryGroups[expandedSummary].length === 0 ? (
+              <div className="chip-row">
                 <span className="empty-text">없음</span>
-              ) : (
-                summaryGroups[expandedSummary].map((n) => (
-                  <span key={n} className="name-chip">
-                    {n}
-                  </span>
-                ))
-              )}
-            </div>
+              </div>
+            ) : (
+              PARTS.map((part) => {
+                const names = summaryGroupsByPart[expandedSummary].get(part);
+                if (!names || names.length === 0) return null;
+                return (
+                  <div key={part} className="summary-detail-part">
+                    <div className="part-status-label">
+                      {part} <span className="summary-detail-part-count">{names.length}</span>
+                    </div>
+                    <div className="chip-row">
+                      {names.map((n) => (
+                        <span key={n} className="name-chip">
+                          {n}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
 

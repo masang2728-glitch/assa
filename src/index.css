@@ -184,6 +184,9 @@ button, input, select, textarea { font-family: inherit; }
 
 .summary-detail-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-top: 12px; }
 .summary-detail-head { font-size: 13px; font-weight: 800; color: var(--ink); }
+.summary-detail-part { margin-top: 14px; }
+.summary-detail-part:first-of-type { margin-top: 10px; }
+.summary-detail-part-count { color: var(--faint); font-weight: 700; }
 
 /* ---------- Part attendance detail ---------- */
 .part-card {
