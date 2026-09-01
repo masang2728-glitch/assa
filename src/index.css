@@ -168,7 +168,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 /* ---------- Attendance dashboard summary ---------- */
-.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .summary-card {
   border-radius: 12px; padding: 12px 4px; text-align: center; background: var(--bg); border: 1px solid var(--border);
   font: inherit; cursor: pointer; width: 100%;
@@ -240,6 +240,13 @@ button, input, select, textarea { font-family: inherit; }
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--ink);
+}
+button.name-chip-admin {
+  font-family: inherit;
+  cursor: pointer;
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 

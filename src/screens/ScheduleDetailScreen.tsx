@@ -13,9 +13,10 @@ const PART_ORDER = new Map(PARTS.map((p, i) => [p, i]));
 
 const THEME_COLOR = "#3730A3";
 
-type SummaryKey = "attend" | "pending" | "absent" | "online";
+type SummaryKey = "attend" | "undecided" | "pending" | "absent" | "online";
 const SUMMARY_LABELS: Record<SummaryKey, string> = {
   attend: "참석·늦참",
+  undecided: "미정",
   pending: "미응답",
   absent: "불참",
   online: "온라인",
@@ -33,6 +34,8 @@ export default function ScheduleDetailScreen() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null); // `${part}__${status}`
   const [expandedSummary, setExpandedSummary] = useState<SummaryKey | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [adminTargetName, setAdminTargetName] = useState<string | null>(null);
+  const [adminSaving, setAdminSaving] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToSchedules(setSchedules, () => toast.error("일정을 불러오지 못했습니다."));
@@ -87,18 +90,22 @@ export default function ScheduleDetailScreen() {
     return map;
   }, [orderedMembers, statusByName]);
 
+  // "미정"(직접 선택)과 "미응답"(아직 아무 응답도 안 한 경우)을 구분한다 — statusByName에
+  // 기록이 아예 없으면 미응답, 기록은 있는데 그 값이 "미정"이면 미정으로 취급한다.
   const summaryGroups = useMemo(() => {
-    const groups: Record<"attend" | "pending" | "absent" | "online", string[]> = {
+    const groups: Record<SummaryKey, string[]> = {
       attend: [],
+      undecided: [],
       pending: [],
       absent: [],
       online: [],
     };
     for (const m of orderedMembers) {
-      const status = statusByName.get(m.name) ?? "미정";
+      const status = statusByName.get(m.name);
       if (status === "참석" || status === "늦참") groups.attend.push(m.name);
       else if (status === "불참") groups.absent.push(m.name);
       else if (status === "온라인") groups.online.push(m.name);
+      else if (status === "미정") groups.undecided.push(m.name);
       else groups.pending.push(m.name);
     }
     return groups;
@@ -109,12 +116,13 @@ export default function ScheduleDetailScreen() {
   const summaryGroupsByPart = useMemo(() => {
     const groups: Record<SummaryKey, Map<string, string[]>> = {
       attend: new Map(),
+      undecided: new Map(),
       pending: new Map(),
       absent: new Map(),
       online: new Map(),
     };
     for (const m of orderedMembers) {
-      const status = statusByName.get(m.name) ?? "미정";
+      const status = statusByName.get(m.name);
       const key: SummaryKey =
         status === "참석" || status === "늦참"
           ? "attend"
@@ -122,7 +130,9 @@ export default function ScheduleDetailScreen() {
             ? "absent"
             : status === "온라인"
               ? "online"
-              : "pending";
+              : status === "미정"
+                ? "undecided"
+                : "pending";
       const map = groups[key];
       if (!map.has(m.part)) map.set(m.part, []);
       map.get(m.part)!.push(m.name);
@@ -141,6 +151,38 @@ export default function ScheduleDetailScreen() {
       setSaving(false);
     }
   };
+
+  // 관리자가 다른 단원의 참석 여부를 대신 변경할 때 쓴다.
+  const handleAdminSetStatus = async (targetName: string, status: AttendanceStatus) => {
+    if (!scheduleId) return;
+    setAdminSaving(true);
+    try {
+      await setAttendance(scheduleId, targetName, status);
+      toast.success(`${targetName}님 참석 여부를 "${status}"(으)로 변경했습니다.`);
+      setAdminTargetName(null);
+    } catch {
+      toast.error("저장 중 오류가 발생했습니다.");
+    } finally {
+      setAdminSaving(false);
+    }
+  };
+
+  // 관리자면 이름 칩을 눌러서 바로 그 사람의 참석 여부를 바꿀 수 있게 한다.
+  const renderNameChip = (n: string) =>
+    isAdmin ? (
+      <button
+        key={n}
+        type="button"
+        className="name-chip name-chip-admin"
+        onClick={() => setAdminTargetName(n)}
+      >
+        {n}
+      </button>
+    ) : (
+      <span key={n} className="name-chip">
+        {n}
+      </span>
+    );
 
   const handleDeleteSchedule = async () => {
     if (!schedule) return;
@@ -236,7 +278,7 @@ export default function ScheduleDetailScreen() {
             <button
               key={key}
               type="button"
-              className={"summary-card" + (key !== "online" ? ` ${key}` : "")}
+              className={"summary-card" + (key !== "online" && key !== "undecided" ? ` ${key}` : "")}
               onClick={() => setExpandedSummary(expandedSummary === key ? null : key)}
             >
               <div className="n">{summaryGroups[key].length}</div>
@@ -263,13 +305,7 @@ export default function ScheduleDetailScreen() {
                     <div className="part-status-label">
                       {part} <span className="summary-detail-part-count">{names.length}</span>
                     </div>
-                    <div className="chip-row">
-                      {names.map((n) => (
-                        <span key={n} className="name-chip">
-                          {n}
-                        </span>
-                      ))}
-                    </div>
+                    <div className="chip-row">{names.map(renderNameChip)}</div>
                   </div>
                 );
               })
@@ -303,11 +339,7 @@ export default function ScheduleDetailScreen() {
                         {names.length === 0 ? (
                           <span className="empty-text">없음</span>
                         ) : (
-                          names.map((n) => (
-                            <span key={n} className="name-chip">
-                              {n}
-                            </span>
-                          ))
+                          names.map(renderNameChip)
                         )}
                       </div>
                     </div>
@@ -331,11 +363,7 @@ export default function ScheduleDetailScreen() {
                         {names.length === 0 ? (
                           <span className="empty-text">없음</span>
                         ) : (
-                          names.map((n) => (
-                            <span key={n} className="name-chip">
-                              {n}
-                            </span>
-                          ))
+                          names.map(renderNameChip)
                         )}
                       </div>
                     )}
@@ -364,6 +392,35 @@ export default function ScheduleDetailScreen() {
           schedule={schedule}
           onClose={() => setShowEditModal(false)}
         />
+      )}
+
+      {adminTargetName && (
+        <div className="modal-backdrop" onClick={() => setAdminTargetName(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">{adminTargetName}님 참석 여부 변경</div>
+            <div className="status-grid">
+              {ATTENDANCE_STATUSES.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  className="status-chip"
+                  style={
+                    statusByName.get(adminTargetName) === status
+                      ? { backgroundColor: THEME_COLOR, borderColor: THEME_COLOR, color: "#fff" }
+                      : undefined
+                  }
+                  disabled={adminSaving}
+                  onClick={() => handleAdminSetStatus(adminTargetName, status)}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="modal-cancel" onClick={() => setAdminTargetName(null)}>
+              닫기
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
