@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { SessionProvider, useSession } from "./session/SessionContext";
@@ -5,6 +6,7 @@ import NameEntryScreen from "./screens/NameEntryScreen";
 import CalendarScreen from "./screens/CalendarScreen";
 import ScheduleDetailScreen from "./screens/ScheduleDetailScreen";
 import MembersScreen from "./screens/MembersScreen";
+import SplashScreen from "./components/SplashScreen";
 
 function RequireSession({ children }: { children: React.ReactNode }) {
   const { name, part, isLoading } = useSession();
@@ -21,8 +23,11 @@ function RootRedirect() {
 }
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   return (
     <SessionProvider>
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <HashRouter>
         <Routes>
           <Route path="/" element={<RootRedirect />} />

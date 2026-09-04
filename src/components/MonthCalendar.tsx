@@ -5,10 +5,18 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const SATURDAY_COLOR = "#2563EB";
 const SUNDAY_COLOR = "#DC2626";
 
+// 그 날짜의 일정에 내가 전부 응답했으면 "voted", 하나라도 응답하지 않았으면 "unvoted".
+export type DateVoteStatus = "voted" | "unvoted";
+
+const VOTED_DOT_COLOR = "var(--good)";
+const UNVOTED_DOT_COLOR = "var(--warn)";
+
 interface MonthCalendarProps {
   month: string; // "YYYY-MM"
   onMonthChange: (month: string) => void;
   scheduleDates: Set<string>;
+  // 날짜별 응답 상태. 없는 날짜(일정 없음)는 그냥 themeColor 점으로 표시된다.
+  voteStatusByDate?: Record<string, DateVoteStatus>;
   selectedDate?: string | null;
   onDayClick: (dateString: string) => void;
   themeColor: string;
@@ -18,6 +26,7 @@ export default function MonthCalendar({
   month,
   onMonthChange,
   scheduleDates,
+  voteStatusByDate,
   selectedDate,
   onDayClick,
   themeColor,
@@ -82,7 +91,19 @@ export default function MonthCalendar({
               >
                 {date.getDate()}
               </button>
-              {hasSchedule && <span className="calendar-dot" style={{ backgroundColor: themeColor }} />}
+              {hasSchedule && (
+                <span
+                  className="calendar-dot"
+                  style={{
+                    backgroundColor:
+                      voteStatusByDate?.[dateString] === "voted"
+                        ? VOTED_DOT_COLOR
+                        : voteStatusByDate?.[dateString] === "unvoted"
+                          ? UNVOTED_DOT_COLOR
+                          : themeColor,
+                  }}
+                />
+              )}
             </div>
           );
         })}

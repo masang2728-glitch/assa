@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToSchedules } from "../api/schedules";
+import { subscribeToMemberVotes } from "../api/attendance";
 import type { Schedule } from "../types";
 import { isScheduleEnded, todayString } from "../dateUtils";
-import MonthCalendar from "../components/MonthCalendar";
+import MonthCalendar, { type DateVoteStatus } from "../components/MonthCalendar";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 
 const THEME_COLOR = "#3730A3";
@@ -14,6 +15,7 @@ export default function CalendarScreen() {
   const { name, part, isAdmin, logout } = useSession();
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [votedScheduleIds, setVotedScheduleIds] = useState<Set<string>>(new Set());
   const [month, setMonth] = useState<string>(todayString().slice(0, 7));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -23,7 +25,26 @@ export default function CalendarScreen() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (!name) return;
+    const unsubscribe = subscribeToMemberVotes(name, setVotedScheduleIds, () =>
+      toast.error("응답 현황을 불러오지 못했습니다.")
+    );
+    return unsubscribe;
+  }, [name]);
+
   const scheduleDates = useMemo(() => new Set(schedules.map((s) => s.date)), [schedules]);
+
+  // 날짜별로, 그날 일정에 내가 전부 응답했으면 "voted", 하나라도 응답 안 했으면 "unvoted".
+  const voteStatusByDate = useMemo(() => {
+    const map: Record<string, DateVoteStatus> = {};
+    for (const s of schedules) {
+      const voted = votedScheduleIds.has(s.id);
+      if (map[s.date] === "unvoted") continue;
+      map[s.date] = voted ? "voted" : "unvoted";
+    }
+    return map;
+  }, [schedules, votedScheduleIds]);
 
   const monthlySchedules = useMemo(
     () =>
@@ -45,6 +66,27 @@ export default function CalendarScreen() {
   const handleLogout = () => {
     logout();
     navigate("/", { replace: true });
+  };
+
+  const renderScheduleRow = (s: Schedule, titlePrefix?: string) => {
+    const voted = votedScheduleIds.has(s.id);
+    return (
+      <div
+        key={s.id}
+        className={`schedule-row ${voted ? "voted" : "unvoted"}`}
+        onClick={() => navigate(`/schedule/${s.id}`)}
+      >
+        <div className="schedule-row-main">
+          <span className="schedule-row-title">
+            {titlePrefix ? `${titlePrefix} · ${s.title}` : s.title}
+          </span>
+          <span className="schedule-row-meta">
+            {s.startTime} ~ {s.endTime} · {s.place}
+          </span>
+        </div>
+        <span className={`vote-badge ${voted ? "voted" : "unvoted"}`}>{voted ? "✓ 응답완료" : "미응답"}</span>
+      </div>
+    );
   };
 
   return (
@@ -74,10 +116,20 @@ export default function CalendarScreen() {
           month={month}
           onMonthChange={setMonth}
           scheduleDates={scheduleDates}
+          voteStatusByDate={voteStatusByDate}
           selectedDate={selectedDate}
           onDayClick={handleDayClick}
           themeColor={THEME_COLOR}
         />
+
+        <div className="legend-row">
+          <span className="legend-item">
+            <span className="legend-dot legend-dot-voted" />내가 응답완료
+          </span>
+          <span className="legend-item">
+            <span className="legend-dot legend-dot-unvoted" />내가 미응답
+          </span>
+        </div>
 
         {isAdmin && (
           <button
@@ -96,14 +148,7 @@ export default function CalendarScreen() {
             {selectedSchedules.length === 0 ? (
               <p className="empty-text">등록된 일정이 없습니다.</p>
             ) : (
-              selectedSchedules.map((s) => (
-                <div key={s.id} className="schedule-row" onClick={() => navigate(`/schedule/${s.id}`)}>
-                  <span className="schedule-row-title">{s.title}</span>
-                  <span className="schedule-row-meta">
-                    {s.startTime} ~ {s.endTime} · {s.place}
-                  </span>
-                </div>
-              ))
+              selectedSchedules.map((s) => renderScheduleRow(s))
             )}
           </>
         )}
@@ -112,16 +157,7 @@ export default function CalendarScreen() {
         {monthlySchedules.length === 0 ? (
           <p className="empty-text">이번 달 등록된 일정이 없습니다.</p>
         ) : (
-          monthlySchedules.map((s) => (
-            <div key={s.id} className="schedule-row" onClick={() => navigate(`/schedule/${s.id}`)}>
-              <span className="schedule-row-title">
-                {s.date} · {s.title}
-              </span>
-              <span className="schedule-row-meta">
-                {s.startTime} ~ {s.endTime} · {s.place}
-              </span>
-            </div>
-          ))
+          monthlySchedules.map((s) => renderScheduleRow(s, s.date))
         )}
       </div>
 
