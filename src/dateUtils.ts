@@ -18,6 +18,14 @@ export function isScheduleEnded(schedule: { date: string; endTime: string }): bo
   return schedule.endTime < nowHHMM;
 }
 
+const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+// "2026-09-12" -> "9/12 토" (카톡 공유용 텍스트에 쓰는 짧은 날짜 표기)
+export function formatDateWithWeekday(dateString: string): string {
+  const d = new Date(`${dateString}T00:00:00`);
+  return `${d.getMonth() + 1}/${d.getDate()} ${WEEKDAY_KO[d.getDay()]}`;
+}
+
 // 일요일 시작 (일, 월, 화, 수, 목, 금, 토 순)
 export function getMonthGrid(year: number, month1to12: number): (Date | null)[] {
   const first = new Date(year, month1to12 - 1, 1);

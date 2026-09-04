@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
@@ -8,6 +8,7 @@ import { subscribeToMembers } from "../api/members";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 import type { Schedule, AttendanceRecord, Member } from "../types";
 import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, VOICE_PARTS, type AttendanceStatus } from "../constants";
+import { formatDateWithWeekday } from "../dateUtils";
 
 const PART_ORDER = new Map(PARTS.map((p, i) => [p, i]));
 
@@ -36,6 +37,9 @@ export default function ScheduleDetailScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [adminTargetName, setAdminTargetName] = useState<string | null>(null);
   const [adminSaving, setAdminSaving] = useState(false);
+  const [copyModalKey, setCopyModalKey] = useState<SummaryKey | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToSchedules(setSchedules, () => toast.error("일정을 불러오지 못했습니다."));
@@ -139,6 +143,45 @@ export default function ScheduleDetailScreen() {
     }
     return groups;
   }, [orderedMembers, statusByName]);
+
+  // 총원 대비 참석(참석+늦참) 비율. 등록된 단원이 없으면 표시하지 않는다.
+  const attendanceRate =
+    orderedMembers.length > 0 ? Math.round((summaryGroups.attend.length / orderedMembers.length) * 100) : null;
+
+  // 카톡 등에 붙여넣기 좋은 텍스트로 - 지금 펼쳐진 명단(파트별로 이미 묶여있는 것)만 옮긴다.
+  const buildCopyText = (key: SummaryKey) => {
+    if (!schedule) return "";
+    const lines = [`📋 ${schedule.title} (${formatDateWithWeekday(schedule.date)}) ${SUMMARY_LABELS[key]} 명단`];
+    lines.push(`${schedule.startTime}~${schedule.endTime} · ${schedule.place}`);
+    lines.push("");
+    for (const part of PARTS) {
+      const names = summaryGroupsByPart[key].get(part);
+      if (!names || names.length === 0) continue;
+      lines.push(`${part} (${names.length}) : ${names.join(", ")}`);
+    }
+    lines.push("");
+    lines.push(`총 ${summaryGroups[key].length}명`);
+    return lines.join("\n");
+  };
+
+  const openCopyModal = (key: SummaryKey) => {
+    setCopied(false);
+    setCopyModalKey(key);
+  };
+
+  const handleCopyText = async () => {
+    if (!copyModalKey) return;
+    const text = buildCopyText(copyModalKey);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("복사되었습니다.");
+    } catch {
+      // 클립보드 권한이 없는 브라우저/웹뷰를 위한 대체 경로: 미리보기 텍스트를 직접 선택해준다.
+      copyTextareaRef.current?.select();
+      toast.error("자동 복사에 실패했어요. 미리보기 내용을 직접 선택해 복사해주세요.");
+    }
+  };
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
     if (!scheduleId || !name) return;
@@ -272,7 +315,10 @@ export default function ScheduleDetailScreen() {
           </>
         )}
 
-        <div className="section-title">출석 현황</div>
+        <div className="section-title-row">
+          <div className="section-title">출석 현황</div>
+          {attendanceRate !== null && <span className="rate-badge">참석률 : {attendanceRate}%</span>}
+        </div>
         <div className="summary-grid">
           {(Object.keys(SUMMARY_LABELS) as SummaryKey[]).map((key) => (
             <button
@@ -289,8 +335,19 @@ export default function ScheduleDetailScreen() {
 
         {expandedSummary && (
           <div className="summary-detail-box">
-            <div className="summary-detail-head">
-              {SUMMARY_LABELS[expandedSummary]} 명단 ({summaryGroups[expandedSummary].length}명)
+            <div className="summary-detail-head-row">
+              <div className="summary-detail-head">
+                {SUMMARY_LABELS[expandedSummary]} 명단 ({summaryGroups[expandedSummary].length}명)
+              </div>
+              {summaryGroups[expandedSummary].length > 0 && (
+                <button type="button" className="copy-link" onClick={() => openCopyModal(expandedSummary)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  명단 복사
+                </button>
+              )}
             </div>
             {summaryGroups[expandedSummary].length === 0 ? (
               <div className="chip-row">
@@ -417,6 +474,30 @@ export default function ScheduleDetailScreen() {
               ))}
             </div>
             <button type="button" className="modal-cancel" onClick={() => setAdminTargetName(null)}>
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {copyModalKey && (
+        <div className="modal-backdrop" onClick={() => setCopyModalKey(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">명단 복사</div>
+            <div className="modal-desc">아래 내용을 그대로 복사해서 카카오톡 등에 붙여넣을 수 있어요.</div>
+            <textarea ref={copyTextareaRef} className="copy-preview" readOnly value={buildCopyText(copyModalKey)} />
+            {copied && (
+              <div className="copied-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                클립보드에 복사되었습니다
+              </div>
+            )}
+            <button type="button" className="submit-button" onClick={handleCopyText}>
+              복사하기
+            </button>
+            <button type="button" className="modal-cancel" onClick={() => setCopyModalKey(null)}>
               닫기
             </button>
           </div>

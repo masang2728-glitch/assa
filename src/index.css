@@ -214,11 +214,45 @@ button, input, select, textarea { font-family: inherit; }
 .summary-card.absent { background: var(--bad-soft); border-color: transparent; }
 .summary-card.absent .n { color: var(--bad); }
 
+.rate-badge {
+  font-size: 12.5px; font-weight: 800; color: var(--accent); background: var(--accent-soft);
+  padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+}
+
 .summary-detail-box { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-top: 12px; }
+.summary-detail-head-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .summary-detail-head { font-size: 13px; font-weight: 800; color: var(--ink); }
+.copy-link {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+  background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.copy-link svg { width: 14px; height: 14px; }
 .summary-detail-part { margin-top: 14px; }
 .summary-detail-part:first-of-type { margin-top: 10px; }
 .summary-detail-part-count { color: var(--faint); font-weight: 700; }
+
+.copy-preview {
+  width: 100%;
+  height: 220px;
+  resize: none;
+  border: 1px solid var(--field-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  color: var(--ink);
+  background: var(--bg);
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+.copied-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 9px 12px;
+  background: var(--good-soft); color: var(--good);
+  border-radius: 10px; font-size: 12.5px; font-weight: 700;
+}
+.copied-row svg { width: 15px; height: 15px; flex-shrink: 0; }
 
 /* ---------- Part attendance detail ---------- */
 .part-card {
