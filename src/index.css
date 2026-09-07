@@ -1,4 +1,7 @@
 :root {
+  /* 이 앱은 항상 밝은 화면만 씁니다 - 브라우저/OS의 "웹 콘텐츠 다크 테마"(강제 다크모드)가
+     이 페이지를 자체적으로 어둡게 바꾸지 않도록 명시적으로 밝은 색 구성표만 지원한다고 알려준다. */
+  color-scheme: light;
   --bg: #f8fafc; --surface: #ffffff; --ink: #1e293b; --muted: #64748b; --faint: #94a3b8;
   --border: #e2e8f0; --border-soft: #f1f5f9; --field-border: #cbd5e1; --accent: #3730a3; --accent-soft: #eef2ff;
   --warn: #b45309; --warn-soft: #fffbeb; --warn-border: #fde68a;
