@@ -5,15 +5,6 @@
   --good: #15803d; --good-soft: #f0fdf4;
   --bad: #b91c1c; --bad-soft: #fef2f2;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1220; --surface: #161f30; --ink: #eef2f8; --muted: #9aa8bd; --faint: #7686a0;
-    --border: #263248; --border-soft: #1c2637; --field-border: #354258; --accent: #7c6ff0; --accent-soft: #241f47;
-    --warn: #fbbf24; --warn-soft: #2b2107; --warn-border: #453309;
-    --good: #4ade80; --good-soft: #0f2417;
-    --bad: #f87171; --bad-soft: #2a1414;
-  }
-}
 
 * { box-sizing: border-box; }
 body {
@@ -256,47 +247,57 @@ button, input, select, textarea { font-family: inherit; }
 
 /* ---------- Part attendance detail ---------- */
 .part-card {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
 }
 .part-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  background: var(--accent);
+  padding: 12px 16px;
 }
-.part-card-title { font-size: 15px; font-weight: 800; }
+.part-card-title-group { display: flex; align-items: baseline; gap: 7px; }
+.part-card-title { font-size: 15.5px; font-weight: 800; color: #fff; }
+.part-card-roster { font-size: 12px; font-weight: 700; color: #ffffffcc; }
 .part-card-total {
   font-size: 12px;
   font-weight: 800;
   color: var(--accent);
-  background: var(--accent-soft);
+  background: #fff;
   padding: 3px 10px;
   border-radius: 999px;
 }
-.part-status-inline { padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
-.part-status-inline-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.part-status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border-soft);
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  width: 100%;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  color: inherit;
+.part-card-body { padding: 4px 16px 8px; background: var(--bg); }
+
+.status-row { padding: 10px 0; border-top: 1px solid var(--border); }
+.status-row:first-child { border-top: none; }
+.status-row-head { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-name { font-size: 13.5px; font-weight: 800; }
+.status-count-badge {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 1px 9px;
+  border-radius: 999px;
 }
-.part-status-row:last-child { border-bottom: none; }
+.dot-attend { background: var(--good); }
+.name-attend { color: var(--good); }
+.dot-absent { background: var(--bad); }
+.name-absent { color: var(--bad); }
+.dot-online { background: var(--accent); }
+.name-online { color: var(--accent); }
+.dot-undecided { background: var(--faint); }
+.name-undecided { color: var(--muted); }
+
 .part-status-label { font-size: 13.5px; color: var(--muted); font-weight: 600; }
-.part-status-count { font-size: 14px; font-weight: 800; color: var(--ink); }
 
 .name-chip {
   font-size: 13px;

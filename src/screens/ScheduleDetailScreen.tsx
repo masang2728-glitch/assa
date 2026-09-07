@@ -23,6 +23,15 @@ const SUMMARY_LABELS: Record<SummaryKey, string> = {
   online: "온라인",
 };
 
+// 파트별 참석 현황의 항목별 색상 - 참석/늦참은 같은 색으로 묶는다.
+const STATUS_STYLE_KEY: Record<AttendanceStatus, string> = {
+  참석: "attend",
+  늦참: "attend",
+  불참: "absent",
+  온라인: "online",
+  미정: "undecided",
+};
+
 export default function ScheduleDetailScreen() {
   const { scheduleId } = useParams<{ scheduleId: string }>();
   const { name, part, isAdmin } = useSession();
@@ -32,7 +41,6 @@ export default function ScheduleDetailScreen() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [saving, setSaving] = useState(false);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null); // `${part}__${status}`
   const [expandedSummary, setExpandedSummary] = useState<SummaryKey | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [adminTargetName, setAdminTargetName] = useState<string | null>(null);
@@ -375,22 +383,26 @@ export default function ScheduleDetailScreen() {
           const statusMap = partBreakdown.get(part)!;
           const attendCount = statusMap.get("참석")?.length ?? 0;
           const lateCount = statusMap.get("늦참")?.length ?? 0;
+          const partTotal = ATTENDANCE_STATUSES.reduce((sum, status) => sum + (statusMap.get(status)?.length ?? 0), 0);
           return (
             <div key={part} className="part-card">
               <div className="part-card-head">
-                <span className="part-card-title">{part}</span>
+                <div className="part-card-title-group">
+                  <span className="part-card-title">{part}</span>
+                  <span className="part-card-roster">총원 {partTotal}명</span>
+                </div>
                 <span className="part-card-total">참석+늦참 {attendCount + lateCount}명</span>
               </div>
-              {ATTENDANCE_STATUSES.map((status) => {
-                const names = statusMap.get(status) ?? [];
-                const alwaysShowNames = status === "참석" || status === "늦참";
-
-                if (alwaysShowNames) {
+              <div className="part-card-body">
+                {ATTENDANCE_STATUSES.map((status) => {
+                  const names = statusMap.get(status) ?? [];
+                  const styleKey = STATUS_STYLE_KEY[status];
                   return (
-                    <div key={status} className="part-status-inline">
-                      <div className="part-status-inline-head">
-                        <span className="part-status-label">{status}</span>
-                        <span className="part-status-count">{names.length}</span>
+                    <div key={status} className="status-row">
+                      <div className="status-row-head">
+                        <span className={`status-dot dot-${styleKey}`} />
+                        <span className={`status-name name-${styleKey}`}>{status}</span>
+                        <span className="status-count-badge">{names.length}</span>
                       </div>
                       <div className="chip-row">
                         {names.length === 0 ? (
@@ -401,32 +413,8 @@ export default function ScheduleDetailScreen() {
                       </div>
                     </div>
                   );
-                }
-
-                const key = `${part}__${status}`;
-                const isExpanded = expandedKey === key;
-                return (
-                  <div key={status}>
-                    <button
-                      type="button"
-                      className="part-status-row"
-                      onClick={() => setExpandedKey(isExpanded ? null : key)}
-                    >
-                      <span className="part-status-label">{status}</span>
-                      <span className="part-status-count">{names.length}</span>
-                    </button>
-                    {isExpanded && (
-                      <div className="chip-row">
-                        {names.length === 0 ? (
-                          <span className="empty-text">없음</span>
-                        ) : (
-                          names.map(renderNameChip)
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                })}
+              </div>
             </div>
           );
         })}
