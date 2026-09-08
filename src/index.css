@@ -299,8 +299,72 @@ button, input, select, textarea { font-family: inherit; }
 .name-online { color: var(--accent); }
 .dot-undecided { background: var(--faint); }
 .name-undecided { color: var(--muted); }
+.dot-pending { background: var(--warn); }
+.name-pending { color: var(--warn); }
 
 .part-status-label { font-size: 13.5px; color: var(--muted); font-weight: 600; }
+
+/* ---------- 참석·늦참 카드 (출석 현황에서 항상 펼쳐진 채로 보이는 항목) ---------- */
+.attend-card {
+  border: 2px solid var(--good);
+  border-radius: 16px;
+  margin-top: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+.attend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--good);
+}
+.attend-head-title { display: flex; align-items: baseline; gap: 8px; }
+.attend-name { font-size: 15px; font-weight: 800; color: #fff; }
+.attend-count { font-size: 12.5px; font-weight: 700; color: #ffffffdd; }
+.attend-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0.95;
+}
+.attend-copy svg { width: 14px; height: 14px; }
+.attend-body { padding: 6px 16px 10px; background: var(--bg); }
+.attend-part-group { margin-top: 14px; }
+.attend-part-group:first-of-type { margin-top: 10px; }
+.attend-part-label { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+.attend-part-name { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+.attend-part-count {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--good);
+  background: var(--good-soft);
+  border: 1px solid #bbf7d0;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.attend-chip {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+}
+button.attend-chip-admin {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: var(--good);
+  color: var(--good);
+  font-family: inherit;
+}
 
 .name-chip {
   font-size: 13px;

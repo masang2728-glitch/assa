@@ -23,13 +23,18 @@ const SUMMARY_LABELS: Record<SummaryKey, string> = {
   online: "온라인",
 };
 
+// 파트별 참석 현황에는 실제 응답 상태 5개에 더해 "미응답"(아직 아무 응답도 안 한 경우)도 따로 보여준다.
+type PartStatusKey = AttendanceStatus | "미응답";
+const PART_STATUS_ORDER: PartStatusKey[] = ["참석", "늦참", "불참", "온라인", "미정", "미응답"];
+
 // 파트별 참석 현황의 항목별 색상 - 참석/늦참은 같은 색으로 묶는다.
-const STATUS_STYLE_KEY: Record<AttendanceStatus, string> = {
+const STATUS_STYLE_KEY: Record<PartStatusKey, string> = {
   참석: "attend",
   늦참: "attend",
   불참: "absent",
   온라인: "online",
   미정: "undecided",
+  미응답: "pending",
 };
 
 export default function ScheduleDetailScreen() {
@@ -41,7 +46,8 @@ export default function ScheduleDetailScreen() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [saving, setSaving] = useState(false);
-  const [expandedSummary, setExpandedSummary] = useState<SummaryKey | null>(null);
+  // "참석·늦참"은 기본으로 항상 펼쳐진 채로 보여준다 - 다른 항목은 눌러야 펼쳐진다.
+  const [expandedSummary, setExpandedSummary] = useState<SummaryKey>("attend");
   const [showEditModal, setShowEditModal] = useState(false);
   const [adminTargetName, setAdminTargetName] = useState<string | null>(null);
   const [adminSaving, setAdminSaving] = useState(false);
@@ -88,15 +94,16 @@ export default function ScheduleDetailScreen() {
     [members]
   );
 
+  // 기록이 아예 없으면(아직 응답 안 함) "미응답"으로, 있으면 그 상태 그대로 묶는다.
   const partBreakdown = useMemo(() => {
-    const map = new Map<string, Map<AttendanceStatus, string[]>>();
+    const map = new Map<string, Map<PartStatusKey, string[]>>();
     for (const part of PARTS) {
-      const statusMap = new Map<AttendanceStatus, string[]>();
-      for (const status of ATTENDANCE_STATUSES) statusMap.set(status, []);
+      const statusMap = new Map<PartStatusKey, string[]>();
+      for (const status of PART_STATUS_ORDER) statusMap.set(status, []);
       map.set(part, statusMap);
     }
     for (const m of orderedMembers) {
-      const status = statusByName.get(m.name) ?? "미정";
+      const status: PartStatusKey = statusByName.get(m.name) ?? "미응답";
       map.get(m.part)?.get(status)?.push(m.name);
     }
     return map;
@@ -219,21 +226,32 @@ export default function ScheduleDetailScreen() {
   };
 
   // 관리자면 이름 칩을 눌러서 바로 그 사람의 참석 여부를 바꿀 수 있게 한다.
-  const renderNameChip = (n: string) =>
-    isAdmin ? (
+  // variant "attend"는 항상 펼쳐진 참석·늦참 카드 전용 스타일(attend-chip)을 쓴다.
+  const renderNameChip = (n: string, variant: "default" | "attend" = "default") => {
+    const baseClass = variant === "attend" ? "attend-chip" : "name-chip";
+    const adminClass = variant === "attend" ? "attend-chip-admin" : "name-chip-admin";
+    return isAdmin ? (
       <button
         key={n}
         type="button"
-        className="name-chip name-chip-admin"
+        className={`${baseClass} ${adminClass}`}
         onClick={() => setAdminTargetName(n)}
       >
         {n}
       </button>
     ) : (
-      <span key={n} className="name-chip">
+      <span key={n} className={baseClass}>
         {n}
       </span>
     );
+  };
+
+  const CopyIcon = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>
+  );
 
   const handleDeleteSchedule = async () => {
     if (!schedule) return;
@@ -333,7 +351,7 @@ export default function ScheduleDetailScreen() {
               key={key}
               type="button"
               className={"summary-card" + (key !== "online" && key !== "undecided" ? ` ${key}` : "")}
-              onClick={() => setExpandedSummary(expandedSummary === key ? null : key)}
+              onClick={() => setExpandedSummary(key)}
             >
               <div className="n">{summaryGroups[key].length}</div>
               <div className="l">{SUMMARY_LABELS[key]}</div>
@@ -341,7 +359,43 @@ export default function ScheduleDetailScreen() {
           ))}
         </div>
 
-        {expandedSummary && (
+        {expandedSummary === "attend" ? (
+          <div className="attend-card">
+            <div className="attend-head">
+              <div className="attend-head-title">
+                <span className="attend-name">참석·늦참</span>
+                <span className="attend-count">{summaryGroups.attend.length}명</span>
+              </div>
+              {summaryGroups.attend.length > 0 && (
+                <button type="button" className="attend-copy" onClick={() => openCopyModal("attend")}>
+                  <CopyIcon />
+                  명단 복사
+                </button>
+              )}
+            </div>
+            <div className="attend-body">
+              {summaryGroups.attend.length === 0 ? (
+                <p className="empty-text" style={{ margin: "10px 0" }}>
+                  없음
+                </p>
+              ) : (
+                PARTS.map((part) => {
+                  const names = summaryGroupsByPart.attend.get(part);
+                  if (!names || names.length === 0) return null;
+                  return (
+                    <div key={part} className="attend-part-group">
+                      <div className="attend-part-label">
+                        <span className="attend-part-name">{part}</span>
+                        <span className="attend-part-count">{names.length}</span>
+                      </div>
+                      <div className="chip-row">{names.map((n) => renderNameChip(n, "attend"))}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="summary-detail-box">
             <div className="summary-detail-head-row">
               <div className="summary-detail-head">
@@ -349,10 +403,7 @@ export default function ScheduleDetailScreen() {
               </div>
               {summaryGroups[expandedSummary].length > 0 && (
                 <button type="button" className="copy-link" onClick={() => openCopyModal(expandedSummary)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
+                  <CopyIcon />
                   명단 복사
                 </button>
               )}
@@ -370,7 +421,7 @@ export default function ScheduleDetailScreen() {
                     <div className="part-status-label">
                       {part} <span className="summary-detail-part-count">{names.length}</span>
                     </div>
-                    <div className="chip-row">{names.map(renderNameChip)}</div>
+                    <div className="chip-row">{names.map((n) => renderNameChip(n))}</div>
                   </div>
                 );
               })
@@ -383,7 +434,7 @@ export default function ScheduleDetailScreen() {
           const statusMap = partBreakdown.get(part)!;
           const attendCount = statusMap.get("참석")?.length ?? 0;
           const lateCount = statusMap.get("늦참")?.length ?? 0;
-          const partTotal = ATTENDANCE_STATUSES.reduce((sum, status) => sum + (statusMap.get(status)?.length ?? 0), 0);
+          const partTotal = PART_STATUS_ORDER.reduce((sum, status) => sum + (statusMap.get(status)?.length ?? 0), 0);
           return (
             <div key={part} className="part-card">
               <div className="part-card-head">
@@ -394,7 +445,7 @@ export default function ScheduleDetailScreen() {
                 <span className="part-card-total">참석+늦참 {attendCount + lateCount}명</span>
               </div>
               <div className="part-card-body">
-                {ATTENDANCE_STATUSES.map((status) => {
+                {PART_STATUS_ORDER.map((status) => {
                   const names = statusMap.get(status) ?? [];
                   const styleKey = STATUS_STYLE_KEY[status];
                   return (
@@ -408,7 +459,7 @@ export default function ScheduleDetailScreen() {
                         {names.length === 0 ? (
                           <span className="empty-text">없음</span>
                         ) : (
-                          names.map(renderNameChip)
+                          names.map((n) => renderNameChip(n))
                         )}
                       </div>
                     </div>
