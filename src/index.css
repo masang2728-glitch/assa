@@ -362,7 +362,7 @@ button.attend-chip-admin {
   cursor: pointer;
   border-style: dashed;
   border-color: var(--good);
-  color: var(--good);
+  color: var(--ink);
   font-family: inherit;
 }
 
@@ -380,7 +380,7 @@ button.name-chip-admin {
   cursor: pointer;
   border-style: dashed;
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--ink);
 }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
