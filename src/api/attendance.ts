@@ -1,6 +1,6 @@
 import { supabase } from "../supabaseClient";
-import type { AttendanceRecord } from "../types";
-import type { AttendanceStatus } from "../constants";
+import type { AttendanceRecord, AttendanceChange } from "../types";
+import type { AttendanceStatus, Part } from "../constants";
 
 function fromRow(row: any): AttendanceRecord {
   return {
@@ -9,6 +9,21 @@ function fromRow(row: any): AttendanceRecord {
     memberName: row.member_name,
     status: row.status,
     updatedAt: new Date(row.updated_at).getTime(),
+  };
+}
+
+function changeFromRow(row: any): AttendanceChange {
+  return {
+    id: row.id,
+    scheduleId: row.schedule_id,
+    scheduleTitle: row.schedule_title,
+    scheduleDate: row.schedule_date,
+    memberName: row.member_name,
+    part: row.part,
+    oldStatus: row.old_status ?? null,
+    newStatus: row.new_status,
+    changedBy: row.changed_by,
+    createdAt: new Date(row.created_at).getTime(),
   };
 }
 
@@ -87,4 +102,40 @@ export async function setAttendance(scheduleId: string, memberName: string, stat
     { onConflict: "schedule_id,member_name" }
   );
   if (error) throw error;
+}
+
+// 관리자 알림 팝업용 - 참석 여부가 바뀔 때마다 남기는 기록. 이 로그가 실패해도 정작
+// 참석 여부 저장 자체(setAttendance)는 이미 끝난 뒤라 사용자에게 에러를 보여주지 않는다.
+export async function logAttendanceChange(entry: {
+  scheduleId: string;
+  scheduleTitle: string;
+  scheduleDate: string;
+  memberName: string;
+  part: Part;
+  oldStatus: AttendanceStatus | null;
+  newStatus: AttendanceStatus;
+  changedBy: string;
+}) {
+  const { error } = await supabase.from("attendance_changes").insert({
+    schedule_id: entry.scheduleId,
+    schedule_title: entry.scheduleTitle,
+    schedule_date: entry.scheduleDate,
+    member_name: entry.memberName,
+    part: entry.part,
+    old_status: entry.oldStatus,
+    new_status: entry.newStatus,
+    changed_by: entry.changedBy,
+  });
+  if (error) throw error;
+}
+
+// 마지막으로 확인한 시각(ms) 이후에 쌓인 변경 기록을 가져온다.
+export async function fetchChangesSince(sinceMs: number): Promise<AttendanceChange[]> {
+  const { data, error } = await supabase
+    .from("attendance_changes")
+    .select("*")
+    .gt("created_at", new Date(sinceMs).toISOString())
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(changeFromRow);
 }

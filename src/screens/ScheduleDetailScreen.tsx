@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToSchedules, deleteSchedule } from "../api/schedules";
-import { subscribeToAttendance, setAttendance } from "../api/attendance";
+import { subscribeToAttendance, setAttendance, logAttendanceChange } from "../api/attendance";
 import { subscribeToMembers } from "../api/members";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 import type { Schedule, AttendanceRecord, Member } from "../types";
@@ -111,6 +111,8 @@ export default function ScheduleDetailScreen() {
 
   // "미정"(직접 선택)과 "미응답"(아직 아무 응답도 안 한 경우)을 구분한다 — statusByName에
   // 기록이 아예 없으면 미응답, 기록은 있는데 그 값이 "미정"이면 미정으로 취급한다.
+  // 지휘자·반주자는 원래 투표 버튼이 없어서 응답 기록이 생길 수 없으므로, 기록이 없다고 해서
+  // "미응답"으로 잡히지 않게 뺀다 (관리자가 직접 상태를 지정해준 경우는 그 상태 그대로 반영).
   const summaryGroups = useMemo(() => {
     const groups: Record<SummaryKey, string[]> = {
       attend: [],
@@ -125,7 +127,7 @@ export default function ScheduleDetailScreen() {
       else if (status === "불참") groups.absent.push(m.name);
       else if (status === "온라인") groups.online.push(m.name);
       else if (status === "미정") groups.undecided.push(m.name);
-      else groups.pending.push(m.name);
+      else if (!(NON_VOTING_PARTS as readonly string[]).includes(m.part)) groups.pending.push(m.name);
     }
     return groups;
   }, [orderedMembers, statusByName]);
@@ -142,7 +144,7 @@ export default function ScheduleDetailScreen() {
     };
     for (const m of orderedMembers) {
       const status = statusByName.get(m.name);
-      const key: SummaryKey =
+      const key: SummaryKey | null =
         status === "참석" || status === "늦참"
           ? "attend"
           : status === "불참"
@@ -151,7 +153,10 @@ export default function ScheduleDetailScreen() {
               ? "online"
               : status === "미정"
                 ? "undecided"
-                : "pending";
+                : (NON_VOTING_PARTS as readonly string[]).includes(m.part)
+                  ? null
+                  : "pending";
+      if (!key) continue;
       const map = groups[key];
       if (!map.has(m.part)) map.set(m.part, []);
       map.get(m.part)!.push(m.name);
@@ -199,10 +204,22 @@ export default function ScheduleDetailScreen() {
   };
 
   const handleSelectStatus = async (status: AttendanceStatus) => {
-    if (!scheduleId || !name) return;
+    if (!scheduleId || !name || !schedule || !part) return;
     setSaving(true);
+    const oldStatus = myRecord?.status ?? null;
     try {
       await setAttendance(scheduleId, name, status);
+      // 관리자 알림 팝업용 기록 - 실패해도 참석 여부 저장 자체는 이미 끝났으니 조용히 넘어간다.
+      logAttendanceChange({
+        scheduleId,
+        scheduleTitle: schedule.title,
+        scheduleDate: schedule.date,
+        memberName: name,
+        part,
+        oldStatus,
+        newStatus: status,
+        changedBy: name,
+      }).catch(() => {});
     } catch {
       toast.error("저장 중 오류가 발생했습니다.");
     } finally {
@@ -212,10 +229,24 @@ export default function ScheduleDetailScreen() {
 
   // 관리자가 다른 단원의 참석 여부를 대신 변경할 때 쓴다.
   const handleAdminSetStatus = async (targetName: string, status: AttendanceStatus) => {
-    if (!scheduleId) return;
+    if (!scheduleId || !schedule || !name) return;
     setAdminSaving(true);
+    const oldStatus = statusByName.get(targetName) ?? null;
+    const targetPart = members.find((m) => m.name === targetName)?.part;
     try {
       await setAttendance(scheduleId, targetName, status);
+      if (targetPart) {
+        logAttendanceChange({
+          scheduleId,
+          scheduleTitle: schedule.title,
+          scheduleDate: schedule.date,
+          memberName: targetName,
+          part: targetPart,
+          oldStatus,
+          newStatus: status,
+          changedBy: name,
+        }).catch(() => {});
+      }
       toast.success(`${targetName}님 참석 여부를 "${status}"(으)로 변경했습니다.`);
       setAdminTargetName(null);
     } catch {

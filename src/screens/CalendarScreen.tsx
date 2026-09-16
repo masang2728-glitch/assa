@@ -3,13 +3,43 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToSchedules } from "../api/schedules";
-import { subscribeToMemberVotes } from "../api/attendance";
-import type { Schedule } from "../types";
+import { subscribeToMemberVotes, fetchChangesSince } from "../api/attendance";
+import type { Schedule, AttendanceChange } from "../types";
+import type { AttendanceStatus } from "../constants";
 import { isScheduleEnded, todayString } from "../dateUtils";
 import MonthCalendar, { type DateVoteStatus } from "../components/MonthCalendar";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 
 const THEME_COLOR = "#3730A3";
+
+// 마지막으로 변경 알림을 확인한 시각을 기기(브라우저)에 저장해둔다 - 관리자가 다른 기기로
+// 들어오면 그 기기는 아직 안 읽은 걸로 다시 보여도 괜찮다고 확인받았다.
+const LAST_SEEN_CHANGE_KEY = "assa:lastSeenChangeAt";
+
+const STATUS_PILL_CLASS: Record<AttendanceStatus, string> = {
+  참석: "attend",
+  늦참: "attend",
+  불참: "absent",
+  온라인: "online",
+  미정: "undecided",
+};
+
+function BellIcon() {
+  return (
+    <svg
+      className="change-modal-bell"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+    </svg>
+  );
+}
 
 export default function CalendarScreen() {
   const { name, part, isAdmin, logout } = useSession();
@@ -19,6 +49,7 @@ export default function CalendarScreen() {
   const [month, setMonth] = useState<string>(todayString().slice(0, 7));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<AttendanceChange[]>([]);
 
   useEffect(() => {
     const unsubscribe = subscribeToSchedules(setSchedules, () => toast.error("일정을 불러오지 못했습니다."));
@@ -32,6 +63,31 @@ export default function CalendarScreen() {
     );
     return unsubscribe;
   }, [name]);
+
+  // 관리자만: 마지막으로 확인한 뒤 (본인이 만든 변경은 빼고) 남이 바꾼 참석 여부가 있으면
+  // 메인 화면 진입 시 딱 한 번 모아서 팝업으로 보여준다.
+  useEffect(() => {
+    if (!isAdmin || !name) return;
+    const lastSeenRaw = localStorage.getItem(LAST_SEEN_CHANGE_KEY);
+    if (!lastSeenRaw) {
+      // 이 기능이 처음 생긴 시점 - 그 이전 변경 이력을 한꺼번에 쏟아내지 않고 지금부터 추적한다.
+      localStorage.setItem(LAST_SEEN_CHANGE_KEY, String(Date.now()));
+      return;
+    }
+    fetchChangesSince(Number(lastSeenRaw))
+      .then((changes) => {
+        const others = changes.filter((c) => c.changedBy !== name);
+        if (others.length > 0) setPendingChanges(others);
+      })
+      .catch(() => {
+        // 알림은 부가 기능이라 실패해도 메인 화면 사용에는 지장 없게 조용히 넘어간다.
+      });
+  }, [isAdmin, name]);
+
+  const acknowledgeChanges = () => {
+    localStorage.setItem(LAST_SEEN_CHANGE_KEY, String(Date.now()));
+    setPendingChanges([]);
+  };
 
   const scheduleDates = useMemo(() => new Set(schedules.map((s) => s.date)), [schedules]);
 
@@ -166,6 +222,46 @@ export default function CalendarScreen() {
           defaultDate={selectedDate ?? todayString()}
           onClose={() => setShowAddModal(false)}
         />
+      )}
+
+      {pendingChanges.length > 0 && (
+        <div className="modal-backdrop modal-backdrop-center" onClick={acknowledgeChanges}>
+          <div className="modal-card modal-card-center" onClick={(e) => e.stopPropagation()}>
+            <div className="change-modal-title-row">
+              <BellIcon />
+              <div className="modal-title" style={{ margin: 0 }}>
+                참석 여부 변경 알림
+              </div>
+            </div>
+            <p className="modal-desc">마지막으로 확인하신 뒤 바뀐 참석 여부 변경사항이에요.</p>
+
+            <div className="change-list">
+              {pendingChanges.map((c) => (
+                <div key={c.id} className="change-item">
+                  <div className="change-who">
+                    <span className="part">{c.part}</span>
+                    {c.memberName}
+                  </div>
+                  <div className="change-status-row">
+                    <span className={`status-pill ${c.oldStatus ? STATUS_PILL_CLASS[c.oldStatus] : "undecided"}`}>
+                      {c.oldStatus ?? "미응답"}
+                    </span>
+                    <span className="change-arrow">→</span>
+                    <span className={`status-pill ${STATUS_PILL_CLASS[c.newStatus]}`}>{c.newStatus}</span>
+                  </div>
+                  <div className="change-meta">
+                    {c.scheduleTitle} · {c.scheduleDate}
+                    {c.changedBy !== c.memberName ? ` · ${c.changedBy}님이 변경` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button type="button" className="submit-button" onClick={acknowledgeChanges}>
+              확인했어요
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
