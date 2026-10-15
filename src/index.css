@@ -504,3 +504,16 @@ button.member-chip:active { opacity: 0.7; }
 .status-pill.online { background: var(--accent-soft); color: var(--accent); }
 .change-arrow { color: var(--faint); font-weight: 700; }
 .change-meta { font-size: 12px; color: var(--faint); margin-top: 8px; }
+
+/* ---------- 새 일정 등록 알림 팝업 (단원이 앱에 들어올 때) ---------- */
+.new-schedule-item { width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.new-schedule-date { font-size: 12.5px; font-weight: 800; color: var(--accent); margin-bottom: 2px; }
+
+/* ---------- 참석 여부 저장 확인 팝업 (누른 본인에게 짤과 함께 보여줌) ---------- */
+.confirm-modal { text-align: center; max-width: 340px; margin: 0 auto; }
+.confirm-modal-image { width: 100%; max-height: 260px; object-fit: contain; border-radius: 12px; margin-bottom: 14px; }
+.confirm-modal-icon { width: 52px; height: 52px; margin: 4px auto 12px; display: block; }
+.confirm-modal-icon.icon-attend { color: var(--good); }
+.confirm-modal-icon.icon-absent { color: var(--bad); }
+.confirm-modal-icon.icon-online { color: var(--accent); }
+.confirm-modal-icon.icon-undecided { color: var(--muted); }

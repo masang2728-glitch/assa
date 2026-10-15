@@ -7,7 +7,14 @@ import { subscribeToAttendance, setAttendance, logAttendanceChange } from "../ap
 import { subscribeToMembers } from "../api/members";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 import type { Schedule, AttendanceRecord, Member } from "../types";
-import { ATTENDANCE_STATUSES, NON_VOTING_PARTS, PARTS, VOICE_PARTS, type AttendanceStatus } from "../constants";
+import {
+  ATTENDANCE_STATUSES,
+  NON_VOTING_PARTS,
+  PARTS,
+  POPUP_IMAGES,
+  VOICE_PARTS,
+  type AttendanceStatus,
+} from "../constants";
 import { formatDateWithWeekday } from "../dateUtils";
 
 const PART_ORDER = new Map(PARTS.map((p, i) => [p, i]));
@@ -53,6 +60,8 @@ export default function ScheduleDetailScreen() {
   const [adminSaving, setAdminSaving] = useState(false);
   const [copyModalKey, setCopyModalKey] = useState<SummaryKey | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmedStatus, setConfirmedStatus] = useState<AttendanceStatus | null>(null);
+  const [confirmImage, setConfirmImage] = useState<string | null>(null);
   const copyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -111,8 +120,9 @@ export default function ScheduleDetailScreen() {
 
   // "미정"(직접 선택)과 "미응답"(아직 아무 응답도 안 한 경우)을 구분한다 — statusByName에
   // 기록이 아예 없으면 미응답, 기록은 있는데 그 값이 "미정"이면 미정으로 취급한다.
-  // 지휘자·반주자는 원래 투표 버튼이 없어서 응답 기록이 생길 수 없으므로, 기록이 없다고 해서
+  // 반주자는 투표 버튼이 없어서 응답 기록이 생길 수 없으므로, 기록이 없다고 해서
   // "미응답"으로 잡히지 않게 뺀다 (관리자가 직접 상태를 지정해준 경우는 그 상태 그대로 반영).
+  // 지휘자는 투표하므로 다른 단원과 똑같이 집계된다 (파트별 참석 현황 칸에만 안 나온다).
   const summaryGroups = useMemo(() => {
     const groups: Record<SummaryKey, string[]> = {
       attend: [],
@@ -220,6 +230,10 @@ export default function ScheduleDetailScreen() {
         newStatus: status,
         changedBy: name,
       }).catch(() => {});
+      // 누른 본인에게 저장이 잘 됐다는 확인 팝업을 화면 가운데에 띄운다 - 짤은 목록에서 무작위로 하나.
+      const images = POPUP_IMAGES[status];
+      setConfirmImage(images.length > 0 ? images[Math.floor(Math.random() * images.length)] : null);
+      setConfirmedStatus(status);
     } catch {
       toast.error("저장 중 오류가 발생했습니다.");
     } finally {
@@ -569,6 +583,42 @@ export default function ScheduleDetailScreen() {
             </button>
             <button type="button" className="modal-cancel" onClick={() => setCopyModalKey(null)}>
               닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmedStatus && (
+        <div className="modal-backdrop modal-backdrop-center" onClick={() => setConfirmedStatus(null)}>
+          <div className="modal-card modal-card-center confirm-modal" onClick={(e) => e.stopPropagation()}>
+            {confirmImage ? (
+              <img
+                className="confirm-modal-image"
+                src={confirmImage}
+                alt=""
+                onError={() => setConfirmImage(null)}
+              />
+            ) : (
+              <svg
+                className={`confirm-modal-icon icon-${STATUS_STYLE_KEY[confirmedStatus]}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="16 9 10.5 15 8 12.5"></polyline>
+              </svg>
+            )}
+            <div className="modal-title">{confirmedStatus}으로 저장되었어요</div>
+            <span className={`status-pill ${STATUS_STYLE_KEY[confirmedStatus]}`}>{confirmedStatus}</span>
+            <p className="modal-desc" style={{ marginTop: 12 }}>
+              {schedule.title} · {formatDateWithWeekday(schedule.date)}
+            </p>
+            <button type="button" className="submit-button" onClick={() => setConfirmedStatus(null)}>
+              확인
             </button>
           </div>
         </div>

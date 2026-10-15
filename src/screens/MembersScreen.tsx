@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToMembers, deactivateMember } from "../api/members";
 import type { Member } from "../types";
-import { NON_VOTING_PARTS, VOICE_PARTS } from "../constants";
+import { NON_VOICE_PARTS, VOICE_PARTS } from "../constants";
 
 export default function MembersScreen() {
   const { isAdmin } = useSession();
@@ -24,7 +24,7 @@ export default function MembersScreen() {
   );
 
   const nonVotingMembers = useMemo(
-    () => members.filter((m) => (NON_VOTING_PARTS as readonly string[]).includes(m.part)),
+    () => members.filter((m) => (NON_VOICE_PARTS as readonly string[]).includes(m.part)),
     [members]
   );
 
