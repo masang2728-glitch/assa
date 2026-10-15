@@ -15,10 +15,12 @@ export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
 // 참석 여부를 누르면 뜨는 확인 팝업의 짤 목록. 이미지 파일은 public/popup 폴더에 넣고
 // 여기에 "/popup/파일이름"으로 적으면 된다. 목록 중 하나가 무작위로 뜨고, 비어 있으면 체크 아이콘이 뜬다.
-// attend1 그만 좀 봅시다 · attend2 오이시 · attend4 디카프리오
+// attend1 그만 좀 봅시다 · attend2 오이시 · attend4 디카프리오 · attend5 와 이래 많이 봅니까
 // absent1 굶어라 · absent2 절단났네 · absent3 최민수 · absent4 페페
-const ATTEND_IMAGES = ["/popup/attend1.jpg", "/popup/attend2.gif", "/popup/attend4.jpg"];
-const ABSENT_IMAGES = ["/popup/absent1.png", "/popup/absent2.png", "/popup/absent3.jpg", "/popup/absent4.png"];
+// 팝업에서는 작게 보이므로 긴 쪽 640px 이하로 줄여서 넣는다 - 크면 휴대폰에서 늦게 뜬다.
+// 움짤은 gif 대신 움직이는 webp로 바꿔 넣으면 용량이 훨씬 작다 (오이시: 3.5MB gif -> 0.6MB webp).
+const ATTEND_IMAGES = ["/popup/attend1.jpg", "/popup/attend2.webp", "/popup/attend4.jpg", "/popup/attend5.jpg"];
+const ABSENT_IMAGES = ["/popup/absent1.jpg", "/popup/absent2.jpg", "/popup/absent3.jpg", "/popup/absent4.png"];
 
 export const POPUP_IMAGES: Record<AttendanceStatus, string[]> = {
   참석: ATTEND_IMAGES,

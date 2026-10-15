@@ -76,10 +76,11 @@ export default function CalendarScreen() {
     return unsubscribe;
   }, [name]);
 
-  // 관리자만: 마지막으로 확인한 뒤 (본인이 만든 변경은 빼고) 남이 바꾼 참석 여부가 있으면
+  // 관리자와 지휘자만: 마지막으로 확인한 뒤 (본인이 만든 변경은 빼고) 남이 바꾼 참석 여부가 있으면
   // 메인 화면 진입 시 딱 한 번 모아서 팝업으로 보여준다.
+  const canSeeChanges = isAdmin || part === "지휘자";
   useEffect(() => {
-    if (!isAdmin || !name) return;
+    if (!canSeeChanges || !name) return;
     const lastSeenRaw = localStorage.getItem(LAST_SEEN_CHANGE_KEY);
     if (!lastSeenRaw) {
       // 이 기능이 처음 생긴 시점 - 그 이전 변경 이력을 한꺼번에 쏟아내지 않고 지금부터 추적한다.
@@ -94,7 +95,7 @@ export default function CalendarScreen() {
       .catch(() => {
         // 알림은 부가 기능이라 실패해도 메인 화면 사용에는 지장 없게 조용히 넘어간다.
       });
-  }, [isAdmin, name]);
+  }, [canSeeChanges, name]);
 
   const acknowledgeChanges = () => {
     localStorage.setItem(LAST_SEEN_CHANGE_KEY, String(Date.now()));

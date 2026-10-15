@@ -74,6 +74,14 @@ export default function ScheduleDetailScreen() {
     return unsubscribe;
   }, []);
 
+  // 확인 팝업 짤을 화면에 들어오자마자 미리 받아둔다 - 버튼을 누른 뒤에 받기 시작하면
+  // 휴대폰에서 팝업만 먼저 뜨고 사진이 한참 뒤에 나온다. 투표하는 사람에게만 필요하다.
+  useEffect(() => {
+    if (!isVotingPart) return;
+    const urls = new Set(Object.values(POPUP_IMAGES).flat());
+    for (const url of urls) new Image().src = url;
+  }, [isVotingPart]);
+
   useEffect(() => {
     if (!scheduleId) return;
     const unsubscribe = subscribeToAttendance(scheduleId, setRecords, () =>
