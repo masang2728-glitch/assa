@@ -44,6 +44,19 @@ const STATUS_STYLE_KEY: Record<PartStatusKey, string> = {
   미응답: "pending",
 };
 
+// 바로 전에 띄운 짤 - 같은 짤이 두 번 연속으로 나오지 않게 한다. 컴포넌트 밖에 두어서
+// 다른 일정 화면으로 옮겨 가도 기억이 이어진다 (앱을 새로 열면 초기화).
+let lastPopupImage: string | null = null;
+
+function pickPopupImage(status: AttendanceStatus): string | null {
+  const images = POPUP_IMAGES[status];
+  if (images.length === 0) return null;
+  const candidates = images.length > 1 ? images.filter((img) => img !== lastPopupImage) : images;
+  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  lastPopupImage = picked;
+  return picked;
+}
+
 export default function ScheduleDetailScreen() {
   const { scheduleId } = useParams<{ scheduleId: string }>();
   const { name, part, isAdmin } = useSession();
@@ -239,8 +252,7 @@ export default function ScheduleDetailScreen() {
         changedBy: name,
       }).catch(() => {});
       // 누른 본인에게 저장이 잘 됐다는 확인 팝업을 화면 가운데에 띄운다 - 짤은 목록에서 무작위로 하나.
-      const images = POPUP_IMAGES[status];
-      setConfirmImage(images.length > 0 ? images[Math.floor(Math.random() * images.length)] : null);
+      setConfirmImage(pickPopupImage(status));
       setConfirmedStatus(status);
     } catch {
       toast.error("저장 중 오류가 발생했습니다.");
