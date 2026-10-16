@@ -44,16 +44,47 @@ const STATUS_STYLE_KEY: Record<PartStatusKey, string> = {
   미응답: "pending",
 };
 
-// 바로 전에 띄운 짤 - 같은 짤이 두 번 연속으로 나오지 않게 한다. 컴포넌트 밖에 두어서
-// 다른 일정 화면으로 옮겨 가도 기억이 이어진다 (앱을 새로 열면 초기화).
-let lastPopupImage: string | null = null;
+// 확인 팝업 짤은 목록을 섞어서 한 장씩 꺼내 쓰고, 다 쓰면 다시 섞는다 - 그래서 한 바퀴 안에서는
+// 모든 짤이 정확히 한 번씩 나온다. 앱을 껐다 켜도 이어지도록 남은 순서를 기기에 저장해 둔다.
+// 참석·늦참은 같은 목록이라 순서를 같이 쓴다 (목록 내용이 키라서 짤을 바꾸면 자동으로 새로 시작한다).
+const POPUP_BAG_KEY_PREFIX = "assa:popupBag:";
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 function pickPopupImage(status: AttendanceStatus): string | null {
   const images = POPUP_IMAGES[status];
   if (images.length === 0) return null;
-  const candidates = images.length > 1 ? images.filter((img) => img !== lastPopupImage) : images;
-  const picked = candidates[Math.floor(Math.random() * candidates.length)];
-  lastPopupImage = picked;
+  const key = POPUP_BAG_KEY_PREFIX + images.join(",");
+
+  let bag: string[] = [];
+  let last: string | null = null;
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) ?? "null");
+    if (saved && Array.isArray(saved.bag)) bag = saved.bag.filter((img: string) => images.includes(img));
+    if (saved && typeof saved.last === "string") last = saved.last;
+  } catch {
+    // 저장된 값이 없거나 깨졌으면 새로 섞는다.
+  }
+
+  if (bag.length === 0) {
+    bag = shuffle(images);
+    // 새 바퀴의 첫 장이 직전에 본 짤이면 맨 뒤로 보내서 같은 짤이 연달아 나오지 않게 한다.
+    if (bag.length > 1 && bag[0] === last) bag.push(bag.shift()!);
+  }
+
+  const picked = bag.shift()!;
+  try {
+    localStorage.setItem(key, JSON.stringify({ bag, last: picked }));
+  } catch {
+    // 저장이 안 되는 환경(사생활 보호 모드 등)이면 이번 순서만 쓰고 넘어간다.
+  }
   return picked;
 }
 
