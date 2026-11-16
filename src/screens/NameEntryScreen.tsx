@@ -4,12 +4,13 @@ import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { upsertMember } from "../api/members";
 import { PARTS, type Part } from "../constants";
+import splashImage from "../assets/splash.jpg";
 
 export default function NameEntryScreen() {
   const { login } = useSession();
   const navigate = useNavigate();
   const [name, setName] = useState("");
-  const [part, setPart] = useState<Part>(PARTS[0]);
+  const [part, setPart] = useState<Part | null>(null);
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [entering, setEntering] = useState(false);
@@ -17,6 +18,10 @@ export default function NameEntryScreen() {
   const handleEnter = async () => {
     if (!name.trim()) {
       toast.error("이름을 입력해주세요.");
+      return;
+    }
+    if (!part) {
+      toast.error("파트를 골라주세요.");
       return;
     }
     const result = login(name, part, pin);
@@ -32,7 +37,7 @@ export default function NameEntryScreen() {
       setEntering(false);
       return;
     }
-    navigate("/calendar", { replace: true });
+    navigate("/home", { replace: true });
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -40,32 +45,32 @@ export default function NameEntryScreen() {
   };
 
   return (
-    <div className="entry-screen">
-      <div className="entry-card">
-        <h1 className="entry-title">ASSA</h1>
-        <p className="entry-subtitle">창원근로자합창단</p>
-
+    <div className="entry-screen" style={{ ["--splash" as string]: `url(${splashImage})` }}>
+      <div className="entry-form">
+        <div className="entry-label">이름</div>
         <input
           className="entry-input"
-          placeholder="이름"
+          placeholder="이름을 입력하세요"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={onKeyDown}
-          autoFocus
         />
 
-        <div className="field-label" style={{ marginTop: 14 }}>
-          파트
-        </div>
-        <select className="text-field" value={part} onChange={(e) => setPart(e.target.value as Part)}>
+        <div className="entry-label">파트</div>
+        <div className="part-buttons">
           {PARTS.map((p) => (
-            <option key={p} value={p}>
+            <button
+              key={p}
+              type="button"
+              className={"part-button" + (part === p ? " on" : "")}
+              onClick={() => setPart(p)}
+            >
               {p}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
 
-        {showPin ? (
+        {showPin && (
           <input
             className="entry-input"
             placeholder="관리자 암호"
@@ -73,16 +78,19 @@ export default function NameEntryScreen() {
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             onKeyDown={onKeyDown}
+            style={{ marginTop: 14 }}
           />
-        ) : (
-          <button type="button" className="entry-admin-link" onClick={() => setShowPin(true)}>
-            관리자이신가요?
-          </button>
         )}
 
         <button type="button" className="entry-button" onClick={handleEnter} disabled={entering}>
           {entering ? "입장 중..." : "입장하기"}
         </button>
+
+        {!showPin && (
+          <button type="button" className="entry-admin-link" onClick={() => setShowPin(true)}>
+            관리자이신가요?
+          </button>
+        )}
       </div>
     </div>
   );

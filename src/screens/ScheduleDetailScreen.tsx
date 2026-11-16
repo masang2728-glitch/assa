@@ -4,6 +4,8 @@ import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToSchedules, deleteSchedule } from "../api/schedules";
 import { subscribeToAttendance, setAttendance, logAttendanceChange } from "../api/attendance";
+import { useRespond, preloadPopupImages, STATUS_ICON } from "../attendanceResponse";
+import { PageHeader, BottomNav } from "../components/Layout";
 import { subscribeToMembers } from "../api/members";
 import ScheduleFormModal from "../components/ScheduleFormModal";
 import type { Schedule, AttendanceRecord, Member } from "../types";
@@ -11,15 +13,12 @@ import {
   ATTENDANCE_STATUSES,
   NON_VOTING_PARTS,
   PARTS,
-  POPUP_IMAGES,
   VOICE_PARTS,
   type AttendanceStatus,
 } from "../constants";
 import { formatDateWithWeekday } from "../dateUtils";
 
 const PART_ORDER = new Map(PARTS.map((p, i) => [p, i]));
-
-const THEME_COLOR = "#3730A3";
 
 type SummaryKey = "attend" | "undecided" | "pending" | "absent" | "online";
 const SUMMARY_LABELS: Record<SummaryKey, string> = {
@@ -44,59 +43,20 @@ const STATUS_STYLE_KEY: Record<PartStatusKey, string> = {
   미응답: "pending",
 };
 
-// 확인 팝업 짤은 목록을 섞어서 한 장씩 꺼내 쓰고, 다 쓰면 다시 섞는다 - 그래서 한 바퀴 안에서는
-// 모든 짤이 정확히 한 번씩 나온다. 앱을 껐다 켜도 이어지도록 남은 순서를 기기에 저장해 둔다.
-// 참석·늦참은 같은 목록이라 순서를 같이 쓴다 (목록 내용이 키라서 짤을 바꾸면 자동으로 새로 시작한다).
-const POPUP_BAG_KEY_PREFIX = "assa:popupBag:";
-
-function shuffle<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-function pickPopupImage(status: AttendanceStatus): string | null {
-  const images = POPUP_IMAGES[status];
-  if (images.length === 0) return null;
-  const key = POPUP_BAG_KEY_PREFIX + images.join(",");
-
-  let bag: string[] = [];
-  let last: string | null = null;
-  try {
-    const saved = JSON.parse(localStorage.getItem(key) ?? "null");
-    if (saved && Array.isArray(saved.bag)) bag = saved.bag.filter((img: string) => images.includes(img));
-    if (saved && typeof saved.last === "string") last = saved.last;
-  } catch {
-    // 저장된 값이 없거나 깨졌으면 새로 섞는다.
-  }
-
-  if (bag.length === 0) {
-    bag = shuffle(images);
-    // 새 바퀴의 첫 장이 직전에 본 짤이면 맨 뒤로 보내서 같은 짤이 연달아 나오지 않게 한다.
-    if (bag.length > 1 && bag[0] === last) bag.push(bag.shift()!);
-  }
-
-  const picked = bag.shift()!;
-  try {
-    localStorage.setItem(key, JSON.stringify({ bag, last: picked }));
-  } catch {
-    // 저장이 안 되는 환경(사생활 보호 모드 등)이면 이번 순서만 쓰고 넘어간다.
-  }
-  return picked;
-}
-
-export default function ScheduleDetailScreen() {
-  const { scheduleId } = useParams<{ scheduleId: string }>();
+// embedded: 출석 현황 화면 안에 끼워 넣을 때 - 머리띠·일정 정보·내 응답 버튼 없이 출석 현황만 보여준다.
+export default function ScheduleDetailScreen({
+  scheduleId: scheduleIdProp,
+  embedded = false,
+}: { scheduleId?: string; embedded?: boolean } = {}) {
+  const params = useParams<{ scheduleId: string }>();
+  const scheduleId = scheduleIdProp ?? params.scheduleId;
   const { name, part, isAdmin } = useSession();
   const isVotingPart = !!part && !(NON_VOTING_PARTS as readonly string[]).includes(part);
   const navigate = useNavigate();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [saving, setSaving] = useState(false);
+  const { respond, savingId, popup } = useRespond();
   // "참석·늦참"은 기본으로 항상 펼쳐진 채로 보여준다 - 다른 항목은 눌러야 펼쳐진다.
   const [expandedSummary, setExpandedSummary] = useState<SummaryKey>("attend");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -104,8 +64,6 @@ export default function ScheduleDetailScreen() {
   const [adminSaving, setAdminSaving] = useState(false);
   const [copyModalKey, setCopyModalKey] = useState<SummaryKey | null>(null);
   const [copied, setCopied] = useState(false);
-  const [confirmedStatus, setConfirmedStatus] = useState<AttendanceStatus | null>(null);
-  const [confirmImage, setConfirmImage] = useState<string | null>(null);
   const copyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -121,10 +79,8 @@ export default function ScheduleDetailScreen() {
   // 확인 팝업 짤을 화면에 들어오자마자 미리 받아둔다 - 버튼을 누른 뒤에 받기 시작하면
   // 휴대폰에서 팝업만 먼저 뜨고 사진이 한참 뒤에 나온다. 투표하는 사람에게만 필요하다.
   useEffect(() => {
-    if (!isVotingPart) return;
-    const urls = new Set(Object.values(POPUP_IMAGES).flat());
-    for (const url of urls) new Image().src = url;
-  }, [isVotingPart]);
+    if (isVotingPart && !embedded) preloadPopupImages();
+  }, [isVotingPart, embedded]);
 
   useEffect(() => {
     if (!scheduleId) return;
@@ -265,31 +221,9 @@ export default function ScheduleDetailScreen() {
     }
   };
 
-  const handleSelectStatus = async (status: AttendanceStatus) => {
-    if (!scheduleId || !name || !schedule || !part) return;
-    setSaving(true);
-    const oldStatus = myRecord?.status ?? null;
-    try {
-      await setAttendance(scheduleId, name, status);
-      // 관리자 알림 팝업용 기록 - 실패해도 참석 여부 저장 자체는 이미 끝났으니 조용히 넘어간다.
-      logAttendanceChange({
-        scheduleId,
-        scheduleTitle: schedule.title,
-        scheduleDate: schedule.date,
-        memberName: name,
-        part,
-        oldStatus,
-        newStatus: status,
-        changedBy: name,
-      }).catch(() => {});
-      // 누른 본인에게 저장이 잘 됐다는 확인 팝업을 화면 가운데에 띄운다 - 짤은 목록에서 무작위로 하나.
-      setConfirmImage(pickPopupImage(status));
-      setConfirmedStatus(status);
-    } catch {
-      toast.error("저장 중 오류가 발생했습니다.");
-    } finally {
-      setSaving(false);
-    }
+  const handleSelectStatus = (status: AttendanceStatus) => {
+    if (!schedule) return;
+    respond(schedule, status, myRecord?.status ?? null);
   };
 
   // 관리자가 다른 단원의 참석 여부를 대신 변경할 때 쓴다.
@@ -362,74 +296,60 @@ export default function ScheduleDetailScreen() {
   };
 
   if (!schedule) {
+    if (embedded) return <p className="empty-text">불러오는 중이거나 존재하지 않는 일정입니다.</p>;
     return (
-      <div className="screen">
-        <div className="header">
-          <div className="header-row">
-            <h1 className="header-title">일정</h1>
-            <button type="button" className="header-link" onClick={() => navigate("/calendar")}>
-              캘린더로 ›
-            </button>
-          </div>
-        </div>
+      <div className="screen has-nav">
+        <PageHeader title="일정" backTo="/calendar" />
         <div className="content">
           <p className="empty-text">불러오는 중이거나 존재하지 않는 일정입니다.</p>
         </div>
+        <BottomNav />
       </div>
     );
   }
 
-  return (
-    <div className="screen">
-      <div className="header">
-        <div className="header-row">
-          <div>
-            <h1 className="header-title">{schedule.title}</h1>
-            <div className="header-sub">{schedule.date}</div>
+  const body = (
+    <>
+        {!embedded && (
+          <div className="info-card">
+            <div className="info-row">
+              <span className="info-label">날짜</span>
+              <span>{formatDateWithWeekday(schedule.date)}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">시간</span>
+              <span>
+                {schedule.startTime} ~ {schedule.endTime}
+              </span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">장소</span>
+              <span>{schedule.place}</span>
+            </div>
+            {schedule.description && (
+              <div className="info-row">
+                <span className="info-label">설명</span>
+                <span style={{ whiteSpace: "pre-wrap" }}>{schedule.description}</span>
+              </div>
+            )}
           </div>
-          <button type="button" className="header-link" onClick={() => navigate("/calendar")}>
-            캘린더로 ›
-          </button>
-        </div>
-      </div>
-
-      <div className="content">
-        <div className="field-label" style={{ marginTop: 0 }}>
-          시간
-        </div>
-        <div>
-          {schedule.startTime} ~ {schedule.endTime}
-        </div>
-
-        <div className="field-label">장소</div>
-        <div>{schedule.place}</div>
-
-        {schedule.description && (
-          <>
-            <div className="field-label">설명</div>
-            <div>{schedule.description}</div>
-          </>
         )}
 
-        {isVotingPart && (
+        {!embedded && isVotingPart && (
           <>
             <div className="section-title">
               나의 참석 여부{myRecord ? ` · 현재: ${myRecord.status}` : ""}
             </div>
-            <div className="status-grid">
+            <div className="quick-status-row">
               {ATTENDANCE_STATUSES.map((status) => (
                 <button
                   key={status}
                   type="button"
-                  className="status-chip"
-                  style={
-                    myRecord?.status === status
-                      ? { backgroundColor: THEME_COLOR, borderColor: THEME_COLOR, color: "#fff" }
-                      : undefined
-                  }
-                  disabled={saving}
+                  className={"quick-status" + (myRecord?.status === status ? " selected" : "")}
+                  disabled={savingId === schedule.id}
                   onClick={() => handleSelectStatus(status)}
                 >
+                  <span className="quick-status-icon">{STATUS_ICON[status]}</span>
                   {status}
                 </button>
               ))}
@@ -576,7 +496,13 @@ export default function ScheduleDetailScreen() {
             </button>
           </div>
         )}
-      </div>
+    </>
+  );
+
+  return (
+    <div className={embedded ? undefined : "screen has-nav"}>
+      {!embedded && <PageHeader title={schedule.title} sub={formatDateWithWeekday(schedule.date)} backTo="/calendar" />}
+      {embedded ? body : <div className="content">{body}</div>}
 
       {showEditModal && (
         <ScheduleFormModal
@@ -595,12 +521,7 @@ export default function ScheduleDetailScreen() {
                 <button
                   key={status}
                   type="button"
-                  className="status-chip"
-                  style={
-                    statusByName.get(adminTargetName) === status
-                      ? { backgroundColor: THEME_COLOR, borderColor: THEME_COLOR, color: "#fff" }
-                      : undefined
-                  }
+                  className={"status-chip" + (statusByName.get(adminTargetName) === status ? " selected" : "")}
                   disabled={adminSaving}
                   onClick={() => handleAdminSetStatus(adminTargetName, status)}
                 >
@@ -639,41 +560,8 @@ export default function ScheduleDetailScreen() {
         </div>
       )}
 
-      {confirmedStatus && (
-        <div className="modal-backdrop modal-backdrop-center" onClick={() => setConfirmedStatus(null)}>
-          <div className="modal-card modal-card-center confirm-modal" onClick={(e) => e.stopPropagation()}>
-            {confirmImage ? (
-              <img
-                className="confirm-modal-image"
-                src={confirmImage}
-                alt=""
-                onError={() => setConfirmImage(null)}
-              />
-            ) : (
-              <svg
-                className={`confirm-modal-icon icon-${STATUS_STYLE_KEY[confirmedStatus]}`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="16 9 10.5 15 8 12.5"></polyline>
-              </svg>
-            )}
-            <div className="modal-title">{confirmedStatus}으로 저장되었어요</div>
-            <span className={`status-pill ${STATUS_STYLE_KEY[confirmedStatus]}`}>{confirmedStatus}</span>
-            <p className="modal-desc" style={{ marginTop: 12 }}>
-              {schedule.title} · {formatDateWithWeekday(schedule.date)}
-            </p>
-            <button type="button" className="submit-button" onClick={() => setConfirmedStatus(null)}>
-              확인
-            </button>
-          </div>
-        </div>
-      )}
+      {popup}
+      {!embedded && <BottomNav />}
     </div>
   );
 }

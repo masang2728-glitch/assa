@@ -15,8 +15,8 @@ export default defineConfig({
         description: '창원근로자합창단 연습/공연 출석관리',
         start_url: '/',
         display: 'standalone',
-        background_color: '#3730A3',
-        theme_color: '#3730A3',
+        background_color: '#0E2A5C',
+        theme_color: '#0E2A5C',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

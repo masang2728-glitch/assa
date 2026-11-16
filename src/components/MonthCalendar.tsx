@@ -8,8 +8,8 @@ const SUNDAY_COLOR = "#DC2626";
 // 그 날짜의 일정에 내가 전부 응답했으면 "voted", 하나라도 응답하지 않았으면 "unvoted".
 export type DateVoteStatus = "voted" | "unvoted";
 
-const VOTED_DOT_COLOR = "var(--good)";
-const UNVOTED_DOT_COLOR = "var(--warn)";
+const VOTED_DOT_COLOR = "#1F9D63";
+const UNVOTED_DOT_COLOR = "#F0A33C";
 
 interface MonthCalendarProps {
   month: string; // "YYYY-MM"

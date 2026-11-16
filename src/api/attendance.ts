@@ -91,6 +91,37 @@ export function subscribeToMemberVotes(
   };
 }
 
+// 나의 출석 화면·홈 "나의 출석" 카드용 - 한 단원의 응답 기록 전체(상태 포함)를 읽기만 한다.
+export function subscribeToMyAttendance(
+  memberName: string,
+  onChange: (records: AttendanceRecord[]) => void,
+  onError?: (error: unknown) => void
+) {
+  let cancelled = false;
+
+  const load = async () => {
+    const { data, error } = await supabase.from("attendance").select("*").eq("member_name", memberName);
+    if (cancelled) return;
+    if (error) {
+      onError?.(error);
+      return;
+    }
+    onChange((data ?? []).map(fromRow));
+  };
+
+  load();
+
+  const channel = supabase
+    .channel(`attendance-my-${Math.random().toString(36).slice(2)}`)
+    .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => load())
+    .subscribe();
+
+  return () => {
+    cancelled = true;
+    supabase.removeChannel(channel);
+  };
+}
+
 export async function setAttendance(scheduleId: string, memberName: string, status: AttendanceStatus) {
   const { error } = await supabase.from("attendance").upsert(
     {

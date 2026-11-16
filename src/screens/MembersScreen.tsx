@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useSession } from "../session/SessionContext";
 import { subscribeToMembers, deactivateMember } from "../api/members";
 import type { Member } from "../types";
 import { NON_VOICE_PARTS, VOICE_PARTS } from "../constants";
+import { PageHeader, BottomNav } from "../components/Layout";
+import Avatar, { PART_STYLE } from "../components/Avatar";
+
+type Tab = "전체" | (typeof VOICE_PARTS)[number];
 
 export default function MembersScreen() {
   const { isAdmin } = useSession();
-  const navigate = useNavigate();
   const [members, setMembers] = useState<Member[]>([]);
+  const [tab, setTab] = useState<Tab>("전체");
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -28,6 +31,8 @@ export default function MembersScreen() {
     [members]
   );
 
+  const visibleGroups = tab === "전체" ? voiceGroups : voiceGroups.filter((g) => g.part === tab);
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -42,79 +47,77 @@ export default function MembersScreen() {
     }
   };
 
-  return (
-    <div className="screen">
-      <div className="header">
-        <div className="header-row">
-          <div>
-            <h1 className="header-title">멤버 현황</h1>
-            <div className="header-sub">전체 {members.length}명</div>
-          </div>
-          <button type="button" className="header-link" onClick={() => navigate("/calendar")}>
-            캘린더로 ›
-          </button>
-        </div>
+  const renderCard = (m: Member) => {
+    const inner = (
+      <>
+        <Avatar part={m.part} size={52} />
+        <b>{m.name}</b>
+        <small style={{ color: PART_STYLE[m.part]?.main }}>{m.part}</small>
+      </>
+    );
+    return isAdmin ? (
+      <button key={m.id} type="button" className="member-card" onClick={() => setDeleteTarget(m)}>
+        {inner}
+      </button>
+    ) : (
+      <div key={m.id} className="member-card">
+        {inner}
       </div>
+    );
+  };
+
+  return (
+    <div className="screen has-nav">
+      <PageHeader title="멤버 현황" backTo="/home" />
 
       <div className="content">
+        <div className="member-total">
+          <span>전체 단원</span>
+          <b>{members.length}명</b>
+        </div>
+
+        <div className="part-tabs">
+          {(["전체", ...VOICE_PARTS] as Tab[]).map((t) => {
+            const count = t === "전체" ? members.length : members.filter((m) => m.part === t).length;
+            return (
+              <button key={t} type="button" className={"part-tab" + (tab === t ? " on" : "")} onClick={() => setTab(t)}>
+                {t !== "전체" && <i style={{ background: PART_STYLE[t].main }} />}
+                {t} {t !== "전체" && count}
+              </button>
+            );
+          })}
+        </div>
+
+        {isAdmin && <p className="hint-text">관리자: 이름 카드를 누르면 단원을 삭제할 수 있어요.</p>}
+
         {members.length === 0 ? (
           <p className="empty-text">등록된 단원이 없습니다.</p>
         ) : (
           <>
-            {voiceGroups.map(
+            {visibleGroups.map(
               (g) =>
                 g.members.length > 0 && (
                   <div key={g.part} className="member-part-group">
                     <div className="member-part-head">
-                      <span className="member-part-title">{g.part}</span>
+                      <span className="member-part-title" style={{ color: PART_STYLE[g.part].main }}>
+                        {g.part}
+                      </span>
                       <span className="member-part-count">{g.members.length}명</span>
                     </div>
-                    <div className="member-chip-row">
-                      {g.members.map((m) =>
-                        isAdmin ? (
-                          <button
-                            key={m.id}
-                            type="button"
-                            className="member-chip"
-                            onClick={() => setDeleteTarget(m)}
-                          >
-                            {m.name}
-                          </button>
-                        ) : (
-                          <span key={m.id} className="member-chip">
-                            {m.name}
-                          </span>
-                        )
-                      )}
-                    </div>
+                    <div className="member-grid">{g.members.map(renderCard)}</div>
                   </div>
                 )
             )}
 
-            {nonVotingMembers.length > 0 && (
+            {tab === "전체" && nonVotingMembers.length > 0 && (
               <div className="member-part-group">
                 <div className="member-part-head">
-                  <span className="member-part-title">지휘자 · 반주자</span>
+                  <span className="member-part-title" style={{ color: "#B08A3E" }}>
+                    지휘자 · 반주자
+                  </span>
                   <span className="member-part-count">{nonVotingMembers.length}명</span>
                 </div>
-                <div className="member-chip-row">
-                  {nonVotingMembers.map((m) =>
-                    isAdmin ? (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className="member-chip novote"
-                        onClick={() => setDeleteTarget(m)}
-                      >
-                        {m.name} ({m.part})
-                      </button>
-                    ) : (
-                      <span key={m.id} className="member-chip novote">
-                        {m.name} ({m.part})
-                      </span>
-                    )
-                  )}
-                </div>
+                <div className="member-grid">{nonVotingMembers.map(renderCard)}</div>
               </div>
             )}
           </>
@@ -137,6 +140,8 @@ export default function MembersScreen() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </div>
   );
 }
