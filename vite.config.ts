@@ -31,6 +31,8 @@ export default defineConfig({
       workbox: {
         // jpg/webp는 참석 확인 팝업 짤 - 휴대폰에 미리 저장해둬야 누르자마자 바로 뜬다.
         globPatterns: ['**/*.{js,css,html,png,jpg,webp,svg,ico}'],
+        // 휴대폰 일정 알림(푸시) 처리 - public/push-handler.js
+        importScripts: ['push-handler.js'],
       },
     }),
   ],

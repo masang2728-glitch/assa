@@ -10,6 +10,9 @@ import { NON_VOTING_PARTS } from "../constants";
 import { isScheduleEnded, todayString } from "../dateUtils";
 import { BottomNav } from "../components/Layout";
 import { NewSchedulesModal, ChangesModal } from "../components/AlertModals";
+import { usePush } from "../push";
+
+const PUSH_BANNER_HIDDEN_KEY = "assa:pushBannerHidden";
 
 // 마지막으로 변경 알림을 확인한 시각을 기기(브라우저)에 저장해둔다 - 관리자가 다른 기기로
 // 들어오면 그 기기는 아직 안 읽은 걸로 다시 보여도 괜찮다고 확인받았다.
@@ -57,6 +60,33 @@ export default function HomeScreen() {
   const [showChanges, setShowChanges] = useState(false);
   const [newSchedules, setNewSchedules] = useState<Schedule[]>([]);
   const checkedNewSchedulesRef = useRef(false);
+
+  // 일정 알림(휴대폰 푸시) 켜기 배너 - ✕로 닫으면 이 기기에서는 다시 안 보인다 (더보기에서 켤 수 있음).
+  const push = usePush(name);
+  const [pushBannerHidden, setPushBannerHidden] = useState(() => {
+    try {
+      return localStorage.getItem(PUSH_BANNER_HIDDEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const hidePushBanner = () => {
+    setPushBannerHidden(true);
+    try {
+      localStorage.setItem(PUSH_BANNER_HIDDEN_KEY, "1");
+    } catch {
+      // 저장이 안 되는 환경이면 이번만 숨긴다.
+    }
+  };
+  const handleEnablePush = async () => {
+    try {
+      const ok = await push.enable();
+      if (ok) toast.success("일정 알림을 켰어요!");
+      else toast.error("알림이 허용되지 않았어요. 휴대폰 설정에서 알림을 허용해 주세요.");
+    } catch {
+      toast.error("알림을 켜지 못했어요. 잠시 후 다시 시도해 주세요.");
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeToSchedules(
@@ -199,6 +229,21 @@ export default function HomeScreen() {
       </div>
 
       <div className="home-sheet">
+        {push.status === "off" && !pushBannerHidden && (
+          <div className="push-banner">
+            <div className="push-banner-icon">🔔</div>
+            <div className="push-banner-text">
+              <b>일정 알림 받기</b>
+              <span>연습·공연 2일 전에 휴대폰으로 알려드려요</span>
+            </div>
+            <button type="button" className="push-banner-on" disabled={push.busy} onClick={handleEnablePush}>
+              {push.busy ? "..." : "켜기"}
+            </button>
+            <button type="button" className="push-banner-close" aria-label="닫기" onClick={hidePushBanner}>
+              ✕
+            </button>
+          </div>
+        )}
         <h2 className="home-h2">주요 메뉴</h2>
         <div className="home-tiles">
           <button type="button" className="home-tile" onClick={() => navigate("/calendar")}>

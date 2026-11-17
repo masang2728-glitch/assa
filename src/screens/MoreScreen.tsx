@@ -9,8 +9,18 @@ import { ADMIN_PIN, PARTS, type Part } from "../constants";
 import { PageHeader, BottomNav } from "../components/Layout";
 import { ChangesModal } from "../components/AlertModals";
 import Avatar from "../components/Avatar";
+import { usePush, type PushStatus } from "../push";
 
 const RECENT_DAYS = 7;
+
+const PUSH_DESC: Record<PushStatus, string> = {
+  loading: "확인 중...",
+  on: "켜짐 · 일정 2일 전 저녁 7시에 알려드려요",
+  off: "꺼짐 · 눌러서 켜기",
+  denied: "휴대폰 설정에서 알림이 차단돼 있어요",
+  "need-install": "아이폰은 홈 화면에 추가한 앱에서 켤 수 있어요",
+  unsupported: "이 브라우저에서는 알림을 받을 수 없어요",
+};
 
 export default function MoreScreen() {
   const { name, part, isAdmin, login, logout } = useSession();
@@ -21,6 +31,7 @@ export default function MoreScreen() {
   const [savingPart, setSavingPart] = useState(false);
   const [recentChanges, setRecentChanges] = useState<AttendanceChange[] | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const push = usePush(name);
 
   const handleSavePart = async () => {
     if (!name) return;
@@ -48,6 +59,37 @@ export default function MoreScreen() {
       setRecentChanges([...list].reverse());
     } catch {
       toast.error("변경 기록을 불러오지 못했습니다.");
+    }
+  };
+
+  const handleTogglePush = async () => {
+    if (push.status === "need-install") {
+      toast("아이폰은 사파리에서 공유 → '홈 화면에 추가'로 설치한 앱에서 알림을 켤 수 있어요.", { duration: 6000 });
+      return;
+    }
+    if (push.status === "denied") {
+      toast("알림이 차단돼 있어요. 휴대폰 설정 → 알림에서 ASSA(또는 브라우저) 알림을 허용해 주세요.", {
+        duration: 6000,
+      });
+      return;
+    }
+    if (push.status === "unsupported") {
+      toast("이 브라우저에서는 알림을 받을 수 없어요. 크롬이나 삼성 인터넷으로 설치한 앱에서 켜 주세요.", {
+        duration: 6000,
+      });
+      return;
+    }
+    try {
+      if (push.status === "on") {
+        await push.disable();
+        toast.success("일정 알림을 껐어요.");
+      } else {
+        const ok = await push.enable();
+        if (ok) toast.success("일정 알림을 켰어요!");
+        else toast.error("알림이 허용되지 않았어요.");
+      }
+    } catch {
+      toast.error("알림 설정을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.");
     }
   };
 
@@ -85,6 +127,24 @@ export default function MoreScreen() {
               <small>일정별 내 참석 기록</small>
             </div>
             <span>›</span>
+          </button>
+          <button
+            type="button"
+            className="menu-item"
+            disabled={push.busy || push.status === "loading"}
+            onClick={handleTogglePush}
+          >
+            <div>
+              <b>일정 알림</b>
+              <small>{PUSH_DESC[push.status]}</small>
+            </div>
+            {push.status === "on" || push.status === "off" ? (
+              <span className={"switch" + (push.status === "on" ? " on" : "")} aria-hidden="true">
+                <i />
+              </span>
+            ) : (
+              <span>›</span>
+            )}
           </button>
           <button type="button" className="menu-item" onClick={handleSwitch}>
             <div>
